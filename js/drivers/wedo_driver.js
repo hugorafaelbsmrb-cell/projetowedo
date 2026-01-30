@@ -18,6 +18,9 @@ export class WeDoDriver {
             distance: 999,
             tilt: 0
         };
+        
+        // Fila de comandos para evitar conflitos GATT
+        this.commandQueue = Promise.resolve();
     }
 
     async connect() {
@@ -147,13 +150,38 @@ export class WeDoDriver {
             console.warn("WeDo: Não conectado ou característica inválida.");
             return;
         }
-        try {
+
+        // Adicionar comando à fila de execução
+        this.commandQueue = this.commandQueue.then(async () => {
             const buffer = new Uint8Array(data);
-            console.log("WeDo: Enviando comando ->", buffer);
-            await this.characteristic.writeValue(buffer);
-        } catch (e) {
-            console.error("WeDo: Erro ao enviar comando:", e);
-        }
+            const maxRetries = 5; // Mais tentativas para garantir
+            
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    // console.log(`WeDo: Enviando [${data.join(',')}]`);
+                    await this.characteristic.writeValue(buffer);
+                    // Sucesso! Pequeno delay para estabilidade do BLE stack
+                    await new Promise(r => setTimeout(r, 20)); 
+                    return;
+                } catch (e) {
+                    const isGattBusy = e.name === 'NetworkError' && e.message.includes('GATT operation already in progress');
+                    
+                    if (isGattBusy) {
+                        // console.warn(`WeDo: Ocupado, retentando (${i+1}/${maxRetries})...`);
+                        await new Promise(r => setTimeout(r, 100 + (i * 50))); // Backoff incremental
+                    } else {
+                        console.error("WeDo: Erro fatal ao enviar:", e);
+                        throw e;
+                    }
+                }
+            }
+            console.error("WeDo: Falha ao enviar comando após várias tentativas.");
+        }).catch(err => {
+            // Apenas logar erros da fila para não quebrar a cadeia inteira
+            console.error("WeDo: Erro na fila de comandos:", err);
+        });
+
+        return this.commandQueue;
     }
 
     // --- Actions ---
@@ -169,21 +197,22 @@ export class WeDoDriver {
 
         console.log(`WeDo: Motor ON ${s}`);
         
-        // Tentar enviar para todas as portas possíveis (0 a 6) para garantir
-        // Portas físicas são geralmente 1 e 2, mas podem variar na enumeração interna
-        const ports = [0, 1, 2, 3, 4, 5, 6];
+        // Tentar enviar para todas as portas possíveis para garantir
+        // Priorizando portas físicas 1 e 2
+        const ports = [1, 2, 0, 3, 4, 5, 6];
         
         for (const port of ports) {
             // Command: [PortID, 0x01 (Motor Output), 0x01 (Length), Power]
-            await this.sendCommand([port, 0x01, 0x01, s]);
+            // Usar await aqui não bloqueia a UI, mas enfileira no driver
+            this.sendCommand([port, 0x01, 0x01, s]);
         }
     }
 
     async motorOff() {
         console.log("WeDo: Motor OFF");
-        const ports = [0, 1, 2, 3, 4, 5, 6];
+        const ports = [1, 2, 0, 3, 4, 5, 6];
         for (const port of ports) {
-            await this.sendCommand([port, 0x01, 0x01, 0]);
+            this.sendCommand([port, 0x01, 0x01, 0]);
         }
     }
 
