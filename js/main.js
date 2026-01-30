@@ -105,9 +105,33 @@ async function handleRun() {
     }
 
     try {
-        const code = Blockly.JavaScript.workspaceToCode(workspace);
+        // Encontrar o bloco "Quando Iniciar"
+        const topBlocks = workspace.getTopBlocks(true);
+        let startBlock = null;
+        
+        for (const block of topBlocks) {
+            if (block.type === 'event_start') {
+                startBlock = block;
+                break;
+            }
+        }
+
+        if (!startBlock) {
+            alert("Por favor, adicione o bloco 'Quando Iniciar' para começar o programa.");
+            return;
+        }
+
+        // Gerar código apenas a partir do bloco de início
+        // blockToCode retorna o código para o bloco e seus sucessores
+        const code = Blockly.JavaScript.blockToCode(startBlock);
+        
         console.log("Generated Code:", code);
         
+        if (!code.trim()) {
+            updateStatus("Programa vazio.");
+            return;
+        }
+
         updateStatus("Executando...");
         isRunning = true;
         

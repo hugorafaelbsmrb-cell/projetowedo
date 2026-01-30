@@ -58,42 +58,48 @@ export class WeDoDriver {
                 }
             }
 
-            console.log("Obtendo característica de IO...");
+            console.log("Obtendo características...");
+            
+            // Variáveis para características separadas
+            let writeChar = null;
+            let notifyChar = null;
+
             try {
-                // Tenta obter a característica padrão primeiro
-                this.characteristic = await this.service.getCharacteristic(this.WEDO_IO_CHAR_UUID);
-            } catch (e3) {
-                console.warn("Característica padrão 1565 não encontrada. Procurando alternativas...");
-                
-                // Estratégia de fallback: Listar TODAS as características e encontrar uma que sirva
-                try {
-                    const characteristics = await this.service.getCharacteristics();
-                    console.log("Características disponíveis:", characteristics.map(c => c.uuid));
-                    
-                    // Procura por qualquer característica que pareça ser de I/O (Output)
-                    // Prioridade: 1565 > 1560 > 1563 > Qualquer com suporte a escrita
-                    this.characteristic = characteristics.find(c => c.uuid.includes("1565")) || 
-                                          characteristics.find(c => c.uuid.includes("1560")) ||
-                                          characteristics.find(c => c.uuid.includes("1563")) ||
-                                          characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse);
-                                          
-                    if (!this.characteristic) {
-                        throw new Error("Nenhuma característica de escrita encontrada no serviço.");
-                    }
-                    console.log("Característica alternativa selecionada:", this.characteristic.uuid);
-                    
-                } catch (eFallback) {
-                    console.error("Falha ao buscar características alternativas:", eFallback);
-                    throw new Error("Não foi possível acessar o controle do motor. Verifique o console para UUIDs disponíveis.");
+                const characteristics = await this.service.getCharacteristics();
+                console.log("Características disponíveis:", characteristics.map(c => c.uuid));
+
+                // 1. Encontrar característica de escrita (Comando) - Prioridade: 1565 > Write Property
+                writeChar = characteristics.find(c => c.uuid.includes("1565")) || 
+                            characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse);
+
+                // 2. Encontrar característica de notificação (Sensor) - Prioridade: 1560 > Notify Property
+                notifyChar = characteristics.find(c => c.uuid.includes("1560")) || 
+                             characteristics.find(c => c.properties.notify);
+
+                if (!writeChar) {
+                    throw new Error("Não foi possível encontrar uma característica de escrita (Comando).");
                 }
+
+                this.characteristic = writeChar; // Característica principal para envio de comandos
+                console.log("Característica de Comando selecionada:", this.characteristic.uuid);
+
+            } catch (eChar) {
+                console.error("Erro ao listar características:", eChar);
+                throw new Error("Falha ao configurar comunicação com o WeDo 2.0.");
             }
             
-            // Start Notifications (Ignora erro se não suportado, para não bloquear conexão)
-            try {
-                await this.characteristic.startNotifications();
-                this.characteristic.addEventListener('characteristicvaluechanged', this.handleNotification.bind(this));
-            } catch (e4) {
-                console.warn("Não foi possível iniciar notificações de sensores:", e4);
+            // Configurar Notificações (Sensores)
+            if (notifyChar) {
+                try {
+                    console.log("Iniciando notificações na característica:", notifyChar.uuid);
+                    await notifyChar.startNotifications();
+                    notifyChar.addEventListener('characteristicvaluechanged', this.handleNotification.bind(this));
+                    console.log("Notificações de sensores ativas.");
+                } catch (eNotify) {
+                    console.warn("Falha ao iniciar notificações (sensores podem não funcionar):", eNotify);
+                }
+            } else {
+                console.warn("Nenhuma característica de notificação encontrada. Sensores indisponíveis.");
             }
 
             this.connected = true;
