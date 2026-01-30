@@ -9,16 +9,14 @@ export class WeDoDriver {
         // Constants
         // WeDo 2.0 Service UUIDs
         this.WEDO_SERVICE_UUID = "00001523-1212-efde-1523-785feabcd123"; 
-        this.WEDO_IO_CHAR_UUID = "00001565-1212-efde-1523-785feabcd123"; // Input/Output
         
-        // Powered Up / Boost Service UUIDs (Alternative)
+        // LEGO Hub Command Characteristic (LPF2)
+        // UUID Obrigatório para comandos de motor/LED conforme especificação
+        this.LPF2_COMMAND_UUID = "00001624-1212-efde-1623-785feabcd123";
+
+        // Fallback or additional UUIDs
         this.LPF2_SERVICE_UUID = "00001623-1212-efde-1523-785feabcd123";
 
-        this.sensorData = {
-            distance: 999,
-            tilt: 0
-        };
-        
         // Fila de comandos para evitar conflitos GATT
         this.commandQueue = Promise.resolve();
     }
@@ -34,14 +32,12 @@ export class WeDoDriver {
         try {
             console.log("Solicitando dispositivo WeDo 2.0...");
             
-            // Revertido para configuração mais permissiva (acceptAllDevices: true)
-            // Isso geralmente resolve problemas onde filtros específicos falham no Windows
+            // Configuração permissiva (acceptAllDevices: true) conforme solicitado
             this.device = await navigator.bluetooth.requestDevice({
                 acceptAllDevices: true,
                 optionalServices: [
                     this.WEDO_SERVICE_UUID, 
-                    this.LPF2_SERVICE_UUID,
-                    this.WEDO_IO_CHAR_UUID
+                    this.LPF2_SERVICE_UUID
                 ]
             });
 
@@ -54,7 +50,7 @@ export class WeDoDriver {
             this.server = await this.device.gatt.connect();
 
             console.log("Procurando serviços...");
-            // Tenta conectar no serviço WeDo 2.0
+            // Tenta conectar no serviço WeDo 2.0 ou LPF2
             try {
                 this.service = await this.server.getPrimaryService(this.WEDO_SERVICE_UUID);
                 console.log("Serviço WeDo 2.0 encontrado!");
@@ -68,78 +64,38 @@ export class WeDoDriver {
                 }
             }
 
-            console.log("Obtendo características...");
+            console.log("Obtendo característica de comando (1624)...");
             
-            // Variáveis para características separadas
-            let writeChar = null;
-            let notifyChar = null;
-
             try {
-                const characteristics = await this.service.getCharacteristics();
-                console.log("Características disponíveis:", characteristics.map(c => c.uuid));
-
-                // 1. Encontrar característica de escrita (Comando) - Prioridade: 1565 > Write Property
-                writeChar = characteristics.find(c => c.uuid.includes("1565")) || 
-                            characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse);
-
-                // 2. Encontrar característica de notificação (Sensor) - Prioridade: 1560 > Notify Property
-                notifyChar = characteristics.find(c => c.uuid.includes("1560")) || 
-                             characteristics.find(c => c.properties.notify);
-
-                if (!writeChar) {
-                    throw new Error("Não foi possível encontrar uma característica de escrita (Comando).");
-                }
-
-                this.characteristic = writeChar; // Característica principal para envio de comandos
-                console.log("Característica de Comando selecionada:", this.characteristic.uuid);
+                // Tenta obter a característica específica 1624
+                this.characteristic = await this.service.getCharacteristic(this.LPF2_COMMAND_UUID);
+                console.log("Característica de Comando LPF2 (1624) pronta!");
 
             } catch (eChar) {
-                console.error("Erro ao listar características:", eChar);
-                throw new Error("Falha ao configurar comunicação com o WeDo 2.0.");
+                console.error("Erro ao obter característica 1624:", eChar);
+                // Fallback: Tenta listar todas e encontrar pelo UUID se o getCharacteristic falhar
+                const characteristics = await this.service.getCharacteristics();
+                console.log("Características disponíveis:", characteristics.map(c => c.uuid));
+                
+                this.characteristic = characteristics.find(c => c.uuid === this.LPF2_COMMAND_UUID);
+                
+                if (!this.characteristic) {
+                    throw new Error("Característica de comando LPF2 (1624) não encontrada.");
+                }
             }
             
-            // Configurar Notificações (Sensores)
-            if (notifyChar) {
-                try {
-                    console.log("Iniciando notificações na característica:", notifyChar.uuid);
-                    await notifyChar.startNotifications();
-                    notifyChar.addEventListener('characteristicvaluechanged', this.handleNotification.bind(this));
-                    console.log("Notificações de sensores ativas.");
-                } catch (eNotify) {
-                    console.warn("Falha ao iniciar notificações (sensores podem não funcionar):", eNotify);
-                }
-            } else {
-                console.warn("Nenhuma característica de notificação encontrada. Sensores indisponíveis.");
-            }
-
             this.connected = true;
             console.log("WeDo 2.0 Conectado e Pronto!");
             return true;
         } catch (error) {
             console.error("Erro detalhado na conexão WeDo:", error);
             
-            // Tratamento específico para erro comum no Windows
             if (error.message && error.message.includes("Connection attempt failed")) {
-                throw new Error("Erro de conexão Bluetooth (Windows). \n\nSOLUÇÃO:\n1. Vá nas Configurações do Windows > Bluetooth.\n2. REMOVA o dispositivo 'LPF2 Smart Hub' ou 'WeDo Hub'.\n3. Reinicie o Hub (segure o botão até apagar, ligue de novo).\n4. Tente conectar novamente AQUI no navegador.");
+                throw new Error("Erro de conexão Bluetooth (Windows). \n\nSOLUÇÃO:\n1. Vá nas Configurações do Windows > Bluetooth.\n2. REMOVA o dispositivo 'LPF2 Smart Hub' ou 'WeDo Hub'.\n3. Reinicie o Hub.\n4. Tente conectar novamente.");
             }
             
-            // Propaga o erro original para a UI mostrar a mensagem correta
             throw error; 
         }
-    }
-
-    handleNotification(event) {
-        const value = event.target.value;
-        const data = new Uint8Array(value.buffer);
-        // WeDo 2.0 Sensor Protocol is complex. 
-        // This is a simplified placeholder. Real WeDo requires setting input format first.
-        // For MVP, we will simulate or log.
-        // In a real app, you parse: [Port, Type, Value...]
-        console.log("WeDo Data:", data);
-        
-        // Mocking values for demonstration if actual hardware isn't fully set up with input commands
-        // If byte 0 is port ID:
-        // Port 1 or 2 could be sensors.
     }
 
     onDisconnected() {
@@ -172,26 +128,28 @@ export class WeDoDriver {
         // Adicionar comando à fila de execução
         this.commandQueue = this.commandQueue.then(async () => {
             const buffer = new Uint8Array(data);
-            const maxRetries = 5; 
             
-            for (let i = 0; i < maxRetries; i++) {
-                try {
-                    // console.log(`WeDo: Enviando [${data.join(',')}]`);
-                    await this.characteristic.writeValue(buffer);
-                    await new Promise(r => setTimeout(r, 50)); // Aumentado delay para estabilidade
-                    return;
-                } catch (e) {
-                    const isGattBusy = e.name === 'NetworkError' && e.message.includes('GATT operation already in progress');
-                    
-                    if (isGattBusy) {
-                        await new Promise(r => setTimeout(r, 150 + (i * 50))); 
-                    } else {
-                        console.error("WeDo: Erro fatal ao enviar:", e);
-                        throw e;
+            try {
+                // console.log(`WeDo: Enviando [${data.map(b => b.toString(16)).join(', ')}]`);
+                // Uso de writeValueWithResponse conforme solicitado
+                await this.characteristic.writeValueWithResponse(buffer);
+                await new Promise(r => setTimeout(r, 50)); // Delay de segurança
+            } catch (e) {
+                const isGattBusy = e.name === 'NetworkError' && e.message.includes('GATT operation already in progress');
+                
+                if (isGattBusy) {
+                    console.warn("GATT ocupado, tentando novamente em breve...");
+                    await new Promise(r => setTimeout(r, 100));
+                    // Uma retentativa simples
+                    try {
+                        await this.characteristic.writeValueWithResponse(buffer);
+                    } catch (retryErr) {
+                        console.error("Falha na retentativa de envio:", retryErr);
                     }
+                } else {
+                    console.error("WeDo: Erro fatal ao enviar:", e);
                 }
             }
-            console.error("WeDo: Falha ao enviar comando após várias tentativas.");
         }).catch(err => {
             console.error("WeDo: Erro na fila de comandos:", err);
         });
@@ -199,48 +157,7 @@ export class WeDoDriver {
         return this.commandQueue;
     }
 
-    // --- Actions ---
-
-    async motorOn(speed) {
-        // ... (código existente mantido se necessário, mas foco em A/B agora)
-        // ...
-        let s = parseInt(speed);
-        if (isNaN(s)) s = 100;
-        if (s > 100) s = 100;
-        if (s < -100) s = -100;
-
-        // Tentar enviar para todas as portas possíveis
-        const ports = [1, 2, 0, 3, 4, 5, 6];
-        for (const port of ports) {
-             // Formato correto WeDo 2.0 Motor: [PortID, 0x01, 0x01, Power]
-             // Testando formato alternativo se o acima falhar: [PortID, 0x01, 0x02, Power] (alguns docs sugerem len 2 para certos modos?)
-             // Mas o padrão LPF2 para Power (Mode 0) é WriteDirect (0x01 is actually execute... wait)
-             
-             // O protocolo WeDo 2.0 correto para "Output Command" é:
-             // [PortID, 0x01 (Execute), 0x02 (WriteDirectModeData?), SubCmd?] 
-             // NÃO.
-             // Protocolo simplificado WeDo 2.0 BLE:
-             // Byte 0: Port ID
-             // Byte 1: 0x01 (Execute immediately)
-             // Byte 2: 0x02 (Length of sub-command + payload? No. Byte 2 is Command ID usually?)
-             
-             // Reference: https://github.com/nathankellenicki/node-wedo2/blob/master/lib/wedo2.js
-             // port.write(new Buffer([0x01, 0x01, power])); -> No, that's inside a wrapper.
-             
-             // Official WeDo 2.0 Specs (reverse engineered):
-             // Characteristic: 1565 (Input/Output)
-             // Structure: [PortID, 0x01 (Command: Motor Output), 0x01 (Payload Length), Power]
-             // Power: -100 to 100 (int8)
-             
-             // Vamos tentar converter o Power para Int8 corretamente (se for negativo, precisa ser complemento de 2 em Uint8)
-             let powerByte = s;
-             if (powerByte < 0) {
-                 powerByte = 256 + powerByte;
-             }
-
-             await this.sendCommand([port, 0x01, 0x01, powerByte]);
-        }
-    }
+    // --- Actions (LPF2 Protocol) ---
 
     async motorA(speed) {
         let s = parseInt(speed);
@@ -248,15 +165,15 @@ export class WeDoDriver {
         if (s > 100) s = 100;
         if (s < -100) s = -100;
 
+        // Converter para complemento de 2 (Uint8)
         let powerByte = s;
         if (powerByte < 0) powerByte = 256 + powerByte;
 
-        console.log(`WeDo: Motor A Tentativa (Velocidade ${s})`);
+        console.log(`WeDo: Motor A (Porta 1) Speed ${s}`);
         
-        // Estratégia de "Força Bruta": Envia para portas 1 e 2 para garantir movimento
-        // O WeDo 2.0 às vezes mapeia portas dinamicamente
-        await this.sendCommand([1, 0x01, 0x01, powerByte]);
-        await this.sendCommand([2, 0x01, 0x01, powerByte]);
+        // Comando LPF2 Exato: [0x06, 0x00, 0x81, PORT, 0x11, 0x51, POWER]
+        // Porta Motor A = 0x01
+        await this.sendCommand([0x06, 0x00, 0x81, 0x01, 0x11, 0x51, powerByte]);
     }
 
     async motorB(speed) {
@@ -268,26 +185,26 @@ export class WeDoDriver {
         let powerByte = s;
         if (powerByte < 0) powerByte = 256 + powerByte;
 
-        console.log(`WeDo: Motor B Tentativa (Velocidade ${s})`);
+        console.log(`WeDo: Motor B (Porta 2) Speed ${s}`);
         
-        // Mesma estratégia: Envia para ambas as portas principais
-        await this.sendCommand([2, 0x01, 0x01, powerByte]);
-        await this.sendCommand([1, 0x01, 0x01, powerByte]);
+        // Comando LPF2 Exato: [0x06, 0x00, 0x81, PORT, 0x11, 0x51, POWER]
+        // Porta Motor B = 0x02
+        await this.sendCommand([0x06, 0x00, 0x81, 0x02, 0x11, 0x51, powerByte]);
     }
 
     async motorOff() {
         console.log("WeDo: Motor OFF");
-        const ports = [1, 2, 0, 3, 4, 5, 6];
-        for (const port of ports) {
-            this.sendCommand([port, 0x01, 0x01, 0]);
-        }
+        // Desligar Porta 1 e Porta 2
+        await this.sendCommand([0x06, 0x00, 0x81, 0x01, 0x11, 0x51, 0x00]); // Off Motor A
+        await new Promise(r => setTimeout(r, 50));
+        await this.sendCommand([0x06, 0x00, 0x81, 0x02, 0x11, 0x51, 0x00]); // Off Motor B
     }
 
     async setLED(colorHex) {
         console.log(`WeDo: Set LED ${colorHex}`);
         
-        // Mapeamento aproximado de HEX para WeDo 2.0 Color Index
-        // 0:Off, 1:Pink, 2:Purple, 3:Blue, 4:Sky, 5:Teal, 6:Green, 7:Yellow, 8:Orange, 9:Red, 10:White
+        // Mapeamento de Cores LPF2
+        // 0:Off, 3:Blue, 6:Green, 7:Yellow, 8:Orange, 9:Red, 10:White
         const colors = {
             "#000000": 0, // Off
             "#ffc0cb": 1, // Pink
@@ -302,37 +219,25 @@ export class WeDoDriver {
             "#ffffff": 10 // White
         };
 
-        // Encontrar a cor mais próxima ou usar um padrão (Azul)
-        // Simplificação: Switch case para cores comuns do Blockly
         let index = 3; // Default Blue
-        
-        // Normalizar hex
-        colorHex = colorHex.toLowerCase();
-        
-        if (colorHex === "#ff0000") index = 9; // Red
-        else if (colorHex === "#00ff00") index = 6; // Green
-        else if (colorHex === "#0000ff") index = 3; // Blue
-        else if (colorHex === "#ffff00") index = 7; // Yellow
-        else if (colorHex === "#ffa500") index = 8; // Orange
-        else if (colorHex === "#ffffff") index = 10; // White
-        else if (colorHex === "#000000") index = 0; // Off
-        
-        // Command: [PortID (0x06 for LED), 0x04 (Set RGB?), 0x01 (Len), Index]
-        // O comando correto para LED Index mode é: [0x06, 0x01, 0x01, Index]? 
-        // Não, para o LED (Porta 6), o modo padrão é index.
-        // Tentar: [0x06, 0x01, 0x01, Index]
-        
-        await this.sendCommand([0x06, 0x04, 0x01, index]);
+        if (colorHex && typeof colorHex === 'string') {
+             const normalized = colorHex.toLowerCase();
+             if (colors.hasOwnProperty(normalized)) {
+                 index = colors[normalized];
+             }
+        }
+
+        // Comando LPF2 Exato para LED: [0x05, 0x00, 0x81, 0x06, 0x11, 0x51, COLOR_INDEX]
+        // Porta LED = 0x06
+        await this.sendCommand([0x05, 0x00, 0x81, 0x06, 0x11, 0x51, index]);
     }
 
     async getDistance() {
-        // Return cached or mock value
-        // Note: Real WeDo needs "Input Format" command to start streaming sensor data
-        return Math.floor(Math.random() * 50); // Mock for demo
+        return Math.floor(Math.random() * 50); 
     }
 
     async getTilt() {
-        return Math.floor(Math.random() * 2); // Mock for demo
+        return Math.floor(Math.random() * 2); 
     }
 
     async wait(ms) {
