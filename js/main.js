@@ -78,7 +78,14 @@ async function handleConnect() {
         }
     } catch (error) {
         console.error(error);
-        updateStatus("Erro: " + error.message);
+        if (error.name === 'NotFoundError') {
+            updateStatus("Cancelado pelo usuário ou dispositivo não encontrado.");
+        } else if (error.name === 'SecurityError') {
+            updateStatus("Erro de permissão. Use HTTPS ou Localhost.");
+        } else {
+            updateStatus("Erro: " + error.message);
+        }
+        alert("Dica: Certifique-se que o botão do WeDo 2.0 foi pressionado e a luz está piscando.");
     }
 }
 

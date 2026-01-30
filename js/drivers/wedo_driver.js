@@ -23,9 +23,16 @@ export class WeDoDriver {
 
         try {
             console.log("Solicitando dispositivo WeDo 2.0...");
+            
+            // Alterado para aceitar TODOS os dispositivos para depuração e garantir que apareça na lista.
+            // O usuário deverá selecionar o dispositivo LEGO manualmente na lista.
             this.device = await navigator.bluetooth.requestDevice({
-                filters: [{ namePrefix: "LPF2" }, { namePrefix: "WeDo" }],
-                optionalServices: [this.SERVICE_UUID, "00001523-1212-efde-1523-785feabcd123"]
+                acceptAllDevices: true,
+                optionalServices: [
+                    this.SERVICE_UUID, 
+                    "00001523-1212-efde-1523-785feabcd123",
+                    this.IO_CHAR_UUID
+                ]
             });
 
             this.device.addEventListener('gattserverdisconnected', this.onDisconnected.bind(this));
