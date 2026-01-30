@@ -169,19 +169,22 @@ export class WeDoDriver {
 
         console.log(`WeDo: Motor ON ${s}`);
         
-        // Port 1 and 2 are usually the external ports on WeDo 2.0 Hub
-        // Command: [PortID, 0x01 (Exec), 0x01 (Write), Power]
+        // Tentar enviar para todas as portas possíveis (0 a 6) para garantir
+        // Portas físicas são geralmente 1 e 2, mas podem variar na enumeração interna
+        const ports = [0, 1, 2, 3, 4, 5, 6];
         
-        // Enviar para Porta 1
-        await this.sendCommand([0x01, 0x01, 0x01, s]);
-        // Enviar para Porta 2
-        await this.sendCommand([0x02, 0x01, 0x01, s]);
+        for (const port of ports) {
+            // Command: [PortID, 0x01 (Motor Output), 0x01 (Length), Power]
+            await this.sendCommand([port, 0x01, 0x01, s]);
+        }
     }
 
     async motorOff() {
         console.log("WeDo: Motor OFF");
-        await this.sendCommand([0x01, 0x01, 0x01, 0]);
-        await this.sendCommand([0x02, 0x01, 0x01, 0]);
+        const ports = [0, 1, 2, 3, 4, 5, 6];
+        for (const port of ports) {
+            await this.sendCommand([port, 0x01, 0x01, 0]);
+        }
     }
 
     async setLED(colorHex) {
