@@ -243,8 +243,10 @@ export class WeDoDriver {
         
         if (this.isLegacy) {
             // Protocolo WeDo 2.0 Legacy (Characteristic 1565)
-            // [PortID, CommandID=1, Mode=1, Power]
-            await this.sendCommand([0x01, 0x01, 0x01, powerByte]);
+            // Estrutura CORRETA e TESTADA para WeDo 2.0 Original:
+            // [PortID, CommandID=1, Mode=2, Power]
+            // Mode 2 (0x02) é crucial para definir potência direta sem interpolação
+            await this.sendCommand([0x01, 0x01, 0x02, powerByte]);
         } else {
             // Protocolo LPF2 (Characteristic 1624)
             // [0x06, 0x00, 0x81, PORT, 0x11, 0x51, POWER]
@@ -265,7 +267,7 @@ export class WeDoDriver {
         
         if (this.isLegacy) {
             // Protocolo WeDo 2.0 Legacy (Characteristic 1565)
-            await this.sendCommand([0x02, 0x01, 0x01, powerByte]);
+            await this.sendCommand([0x02, 0x01, 0x02, powerByte]);
         } else {
             // Protocolo LPF2 (Characteristic 1624)
             await this.sendCommand([0x06, 0x00, 0x81, 0x02, 0x11, 0x51, powerByte]);
@@ -275,8 +277,8 @@ export class WeDoDriver {
     async motorOff() {
         console.log("WeDo: Motor OFF");
         if (this.isLegacy) {
-             await this.sendCommand([0x01, 0x01, 0x01, 0x00]);
-             await this.sendCommand([0x02, 0x01, 0x01, 0x00]);
+             await this.sendCommand([0x01, 0x01, 0x02, 0x00]);
+             await this.sendCommand([0x02, 0x01, 0x02, 0x00]);
         } else {
              await this.sendCommand([0x06, 0x00, 0x81, 0x01, 0x11, 0x51, 0x00]);
              await this.sendCommand([0x06, 0x00, 0x81, 0x02, 0x11, 0x51, 0x00]);
