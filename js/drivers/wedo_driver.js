@@ -14,8 +14,14 @@ export class WeDoDriver {
         // UUID Obrigatório para comandos de motor/LED conforme especificação
         this.LPF2_COMMAND_UUID = "00001624-1212-efde-1623-785feabcd123";
 
+        // WeDo 2.0 Legacy Command UUID (Fallback para hardware antigo)
+        this.WEDO_LEGACY_UUID = "00001565-1212-efde-1523-785feabcd123";
+
         // Fallback or additional UUIDs
         this.LPF2_SERVICE_UUID = "00001623-1212-efde-1523-785feabcd123";
+
+        // Flag de modo de operação
+        this.isLegacy = false;
 
         // Fila de comandos para evitar conflitos GATT
         this.commandQueue = Promise.resolve();
@@ -59,6 +65,7 @@ export class WeDoDriver {
             console.log("Serviços encontrados:", services.map(s => s.uuid));
 
             this.characteristic = null;
+            this.isLegacy = false; // Reset flag
 
             // Percorrer todas as characteristics de cada serviço para encontrar a 1624
             for (const service of services) {
@@ -67,32 +74,47 @@ export class WeDoDriver {
                     const characteristics = await service.getCharacteristics();
                     // console.log(`  Características: ${characteristics.map(c => c.uuid)}`);
                     
-                    const targetChar = characteristics.find(c => c.uuid === this.LPF2_COMMAND_UUID);
-                    if (targetChar) {
-                        this.characteristic = targetChar;
+                    // Prioridade 1: LPF2 Command Characteristic (1624)
+                    const lpf2Char = characteristics.find(c => c.uuid === this.LPF2_COMMAND_UUID);
+                    if (lpf2Char) {
+                        this.characteristic = lpf2Char;
                         this.service = service;
+                        this.isLegacy = false;
                         console.log(`  -> Característica de Comando LPF2 (1624) ENCONTRADA!`);
                         
-                        // Tentar iniciar notificações se possível (para sensores)
+                        // Tentar iniciar notificações
                         try {
                             await this.characteristic.startNotifications();
                             this.characteristic.addEventListener('characteristicvaluechanged', this.handleNotification.bind(this));
-                            console.log("  -> Notificações ativadas na característica 1624");
                         } catch (eNotify) {
                             console.warn("  -> Não foi possível ativar notificações na 1624:", eNotify);
                         }
-                        
                         break;
                     }
+
+                    // Prioridade 2: WeDo 2.0 Legacy Characteristic (1565) - Fallback
+                    const legacyChar = characteristics.find(c => c.uuid === this.WEDO_LEGACY_UUID);
+                    if (legacyChar && !this.characteristic) {
+                         this.characteristic = legacyChar;
+                         this.service = service;
+                         this.isLegacy = true;
+                         console.log(`  -> Característica Legacy WeDo 2.0 (1565) ENCONTRADA! (Modo de Compatibilidade Ativado)`);
+                         // Não damos break imediatamente caso a 1624 esteja em outro serviço depois
+                    }
+
                 } catch (eServ) {
                     console.warn(`  Erro ao listar características do serviço ${service.uuid}:`, eServ);
                 }
             }
 
             if (!this.characteristic) {
-                throw new Error("Falha crítica: Característica de comando LPF2 (1624) não encontrada em nenhum serviço.");
+                throw new Error("Falha crítica: Nenhuma característica de comando (1624 ou 1565) encontrada.");
             }
             
+            if (this.isLegacy) {
+                console.warn("AVISO: Operando em modo Legacy (WeDo 2.0 Original). Protocolo ajustado automaticamente.");
+            }
+
             this.connected = true;
             console.log("WeDo 2.0 Conectado e Pronto!");
             return true;
@@ -184,11 +206,17 @@ export class WeDoDriver {
         let powerByte = s;
         if (powerByte < 0) powerByte = 256 + powerByte;
 
-        console.log(`WeDo: Motor A (Porta 1) Speed ${s}`);
+        console.log(`WeDo: Motor A (Porta 1) Speed ${s} (Legacy: ${this.isLegacy})`);
         
-        // Comando LPF2 Exato: [0x06, 0x00, 0x81, PORT, 0x11, 0x51, POWER]
-        // PORT: 0x01 (Motor A)
-        await this.sendCommand([0x06, 0x00, 0x81, 0x01, 0x11, 0x51, powerByte]);
+        if (this.isLegacy) {
+            // Protocolo WeDo 2.0 Legacy (Characteristic 1565)
+            // [PortID, CommandID=1, Mode=1, Power]
+            await this.sendCommand([0x01, 0x01, 0x01, powerByte]);
+        } else {
+            // Protocolo LPF2 (Characteristic 1624)
+            // [0x06, 0x00, 0x81, PORT, 0x11, 0x51, POWER]
+            await this.sendCommand([0x06, 0x00, 0x81, 0x01, 0x11, 0x51, powerByte]);
+        }
     }
 
     async motorB(speed) {
@@ -200,18 +228,26 @@ export class WeDoDriver {
         let powerByte = s;
         if (powerByte < 0) powerByte = 256 + powerByte;
 
-        console.log(`WeDo: Motor B (Porta 2) Speed ${s}`);
+        console.log(`WeDo: Motor B (Porta 2) Speed ${s} (Legacy: ${this.isLegacy})`);
         
-        // Comando LPF2 Exato: [0x06, 0x00, 0x81, PORT, 0x11, 0x51, POWER]
-        // PORT: 0x02 (Motor B)
-        await this.sendCommand([0x06, 0x00, 0x81, 0x02, 0x11, 0x51, powerByte]);
+        if (this.isLegacy) {
+            // Protocolo WeDo 2.0 Legacy (Characteristic 1565)
+            await this.sendCommand([0x02, 0x01, 0x01, powerByte]);
+        } else {
+            // Protocolo LPF2 (Characteristic 1624)
+            await this.sendCommand([0x06, 0x00, 0x81, 0x02, 0x11, 0x51, powerByte]);
+        }
     }
 
     async motorOff() {
         console.log("WeDo: Motor OFF");
-        // Desligar Porta 1 e Porta 2 (Velocidade 0)
-        await this.sendCommand([0x06, 0x00, 0x81, 0x01, 0x11, 0x51, 0x00]);
-        await this.sendCommand([0x06, 0x00, 0x81, 0x02, 0x11, 0x51, 0x00]);
+        if (this.isLegacy) {
+             await this.sendCommand([0x01, 0x01, 0x01, 0x00]);
+             await this.sendCommand([0x02, 0x01, 0x01, 0x00]);
+        } else {
+             await this.sendCommand([0x06, 0x00, 0x81, 0x01, 0x11, 0x51, 0x00]);
+             await this.sendCommand([0x06, 0x00, 0x81, 0x02, 0x11, 0x51, 0x00]);
+        }
     }
 
     // Compatibilidade com blocos genéricos
@@ -254,10 +290,18 @@ export class WeDoDriver {
         
         console.log(`WeDo: Set LED ${colorHex} (Index ${index})`);
 
-        // Enviar comando via LPF2.
-        // Usando estrutura padrão Output Command para Porta 6 (LED)
-        // [0x06, 0x00, 0x81, 0x06, 0x11, 0x51, COLOR_INDEX]
-        await this.sendCommand([0x06, 0x00, 0x81, 0x06, 0x11, 0x51, index]);
+        if (this.isLegacy) {
+            // Protocolo WeDo 2.0 Legacy (Characteristic 1565)
+            // LED is Port 0x06. Command 0x04 (Set Color RGB?) or similar.
+            // Padrão WeDo 2.0 para LED: Port 6, Mode 0, Command Set Output
+            // [0x06, 0x04, 0x01, index]
+            await this.sendCommand([0x06, 0x04, 0x01, index]);
+        } else {
+            // Enviar comando via LPF2.
+            // Usando estrutura padrão Output Command para Porta 6 (LED)
+            // [0x06, 0x00, 0x81, 0x06, 0x11, 0x51, COLOR_INDEX]
+            await this.sendCommand([0x06, 0x00, 0x81, 0x06, 0x11, 0x51, index]);
+        }
     }
 
     // 4) SENSORES (Mock / Preparado para implementação real)
