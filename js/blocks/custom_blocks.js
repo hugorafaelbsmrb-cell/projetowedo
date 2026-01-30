@@ -34,6 +34,25 @@ export function defineCustomBlocks() {
         }
     };
 
+    // Motor: Spin (Direction + Speed)
+    Blockly.Blocks['motor_spin'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("Girar Motor")
+                .appendField(new Blockly.FieldDropdown([
+                    ["Horário ↻", "CW"],
+                    ["Anti-horário ↺", "CCW"]
+                ]), "DIRECTION");
+            this.appendValueInput("SPEED")
+                .setCheck("Number")
+                .appendField("Velocidade");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour("#4CAF50");
+            this.setTooltip("Gira o motor na direção e velocidade especificadas");
+        }
+    };
+
     // Motor: Off
     Blockly.Blocks['motor_off'] = {
         init: function() {
@@ -125,6 +144,24 @@ export function defineCustomBlocks() {
     registerGenerator('motor_on', function(block) {
         var speed = generator.valueToCode(block, 'SPEED', generator.ORDER_ATOMIC) || '100';
         return `await driver.motorOn(${speed});\n`;
+    });
+
+    registerGenerator('motor_spin', function(block) {
+        var direction = block.getFieldValue('DIRECTION');
+        var speed = generator.valueToCode(block, 'SPEED', generator.ORDER_ATOMIC) || '100';
+        
+        // Ensure speed is treated as number for calculation if it's a string from generator
+        // But generator usually returns string code.
+        // We want to construct the string: "-speed" or "speed".
+        // Note: If speed expression is complex (e.g. "variable + 1"), we need parens.
+        // But for simplicity, we assume simple numbers. 
+        // Safer approach: multiply by -1 if CCW.
+        
+        if (direction === 'CCW') {
+             return `await driver.motorOn(-1 * (${speed}));\n`;
+        } else {
+             return `await driver.motorOn(${speed});\n`;
+        }
     });
 
     registerGenerator('motor_off', function(block) {
