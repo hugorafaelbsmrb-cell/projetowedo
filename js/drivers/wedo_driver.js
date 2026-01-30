@@ -72,15 +72,23 @@ export class WeDoDriver {
                 console.log(`Explorando serviço: ${service.uuid}`);
                 try {
                     const characteristics = await service.getCharacteristics();
-                    // console.log(`  Características: ${characteristics.map(c => c.uuid)}`);
+                    console.log(`  Características encontradas no serviço ${service.uuid}:`);
+                    characteristics.forEach(c => {
+                        console.log(`    - UUID: ${c.uuid}`);
+                        console.log(`      Propriedades: ${JSON.stringify(c.properties)}`);
+                    });
                     
+                    // Normalização para comparação segura
+                    const targetLpf2 = this.LPF2_COMMAND_UUID.toLowerCase();
+                    const targetLegacy = this.WEDO_LEGACY_UUID.toLowerCase();
+
                     // Prioridade 1: LPF2 Command Characteristic (1624)
-                    const lpf2Char = characteristics.find(c => c.uuid === this.LPF2_COMMAND_UUID);
+                    const lpf2Char = characteristics.find(c => c.uuid.toLowerCase().includes("1624") || c.uuid.toLowerCase() === targetLpf2);
                     if (lpf2Char) {
                         this.characteristic = lpf2Char;
                         this.service = service;
                         this.isLegacy = false;
-                        console.log(`  -> Característica de Comando LPF2 (1624) ENCONTRADA!`);
+                        console.log(`  -> [SUCESSO] Característica de Comando LPF2 (1624) ENCONTRADA!`);
                         
                         // Tentar iniciar notificações
                         try {
@@ -93,13 +101,32 @@ export class WeDoDriver {
                     }
 
                     // Prioridade 2: WeDo 2.0 Legacy Characteristic (1565) - Fallback
-                    const legacyChar = characteristics.find(c => c.uuid === this.WEDO_LEGACY_UUID);
+                    const legacyChar = characteristics.find(c => c.uuid.toLowerCase().includes("1565") || c.uuid.toLowerCase() === targetLegacy);
                     if (legacyChar && !this.characteristic) {
                          this.characteristic = legacyChar;
                          this.service = service;
                          this.isLegacy = true;
-                         console.log(`  -> Característica Legacy WeDo 2.0 (1565) ENCONTRADA! (Modo de Compatibilidade Ativado)`);
-                         // Não damos break imediatamente caso a 1624 esteja em outro serviço depois
+                         console.log(`  -> [SUCESSO] Característica Legacy WeDo 2.0 (1565) ENCONTRADA! (Modo de Compatibilidade Ativado)`);
+                         // Se achou a legacy, não damos break imediatamente para tentar achar a LPF2 em outro serviço, 
+                         // mas se não achar, usaremos esta.
+                    }
+                    
+                    // Prioridade 3: Fallback Genérico (Universal Write)
+                    // Se ainda não temos characteristic definida (nem LPF2 nem Legacy encontrada anteriormente neste loop),
+                    // procuramos qualquer característica que permita escrita.
+                    if (!this.characteristic) {
+                        const writeChar = characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse);
+                        if (writeChar) {
+                            console.log(`  -> [TENTATIVA] Característica Genérica de Escrita encontrada: ${writeChar.uuid}`);
+                            // Salvamos como candidato, mas continuamos procurando por uma específica melhor
+                            // Se ao final de tudo não tivermos nada, usaremos esta.
+                            this.characteristic = writeChar;
+                            this.service = service;
+                            // Assumimos Legacy por segurança se for um UUID desconhecido curto, ou LPF2 se for longo... 
+                            // Na dúvida, tentamos LPF2 primeiro se o UUID não for explicitamente o 1565.
+                            this.isLegacy = writeChar.uuid.includes("1565"); 
+                            console.log(`  -> Usando característica genérica (Modo Legacy: ${this.isLegacy})`);
+                        }
                     }
 
                 } catch (eServ) {
@@ -108,7 +135,7 @@ export class WeDoDriver {
             }
 
             if (!this.characteristic) {
-                throw new Error("Falha crítica: Nenhuma característica de comando (1624 ou 1565) encontrada.");
+                throw new Error("Falha crítica: Nenhuma característica de comando (1624, 1565 ou Genérica de Escrita) encontrada.");
             }
             
             if (this.isLegacy) {
