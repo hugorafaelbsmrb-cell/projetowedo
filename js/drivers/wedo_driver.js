@@ -248,12 +248,15 @@ export class WeDoDriver {
         if (s > 100) s = 100;
         if (s < -100) s = -100;
 
-        // Converter para Int8 (byte)
         let powerByte = s;
         if (powerByte < 0) powerByte = 256 + powerByte;
 
-        console.log(`WeDo: Motor A (Porta 1) ON ${s} [Byte: ${powerByte}]`);
+        console.log(`WeDo: Motor A Tentativa (Velocidade ${s})`);
+        
+        // Estratégia de "Força Bruta": Envia para portas 1 e 2 para garantir movimento
+        // O WeDo 2.0 às vezes mapeia portas dinamicamente
         await this.sendCommand([1, 0x01, 0x01, powerByte]);
+        await this.sendCommand([2, 0x01, 0x01, powerByte]);
     }
 
     async motorB(speed) {
@@ -265,8 +268,11 @@ export class WeDoDriver {
         let powerByte = s;
         if (powerByte < 0) powerByte = 256 + powerByte;
 
-        console.log(`WeDo: Motor B (Porta 2) ON ${s} [Byte: ${powerByte}]`);
+        console.log(`WeDo: Motor B Tentativa (Velocidade ${s})`);
+        
+        // Mesma estratégia: Envia para ambas as portas principais
         await this.sendCommand([2, 0x01, 0x01, powerByte]);
+        await this.sendCommand([1, 0x01, 0x01, powerByte]);
     }
 
     async motorOff() {
