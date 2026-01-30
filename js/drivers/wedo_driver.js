@@ -28,18 +28,16 @@ export class WeDoDriver {
             throw new Error("Web Bluetooth API não suportada neste navegador.");
         }
 
-        // Garante limpeza de estados anteriores
-        await this.disconnect();
+        // Garante limpeza de estados anteriores sem falhar
+        try { await this.disconnect(); } catch (e) {}
 
         try {
             console.log("Solicitando dispositivo WeDo 2.0...");
             
-            // Alterado: Usar filtros específicos em vez de acceptAllDevices pode melhorar a estabilidade no Windows
+            // Revertido para configuração mais permissiva (acceptAllDevices: true)
+            // Isso geralmente resolve problemas onde filtros específicos falham no Windows
             this.device = await navigator.bluetooth.requestDevice({
-                filters: [
-                    { services: [this.WEDO_SERVICE_UUID] },
-                    { namePrefix: "LPF2" } 
-                ],
+                acceptAllDevices: true,
                 optionalServices: [
                     this.WEDO_SERVICE_UUID, 
                     this.LPF2_SERVICE_UUID,
@@ -47,29 +45,13 @@ export class WeDoDriver {
                 ]
             });
 
-            // Aumentado delay para 1s para garantir que o Windows preparou o handle do dispositivo
-            await new Promise(r => setTimeout(r, 1000));
+            // Delay de segurança para estabilidade do empilhamento Bluetooth
+            await new Promise(r => setTimeout(r, 500));
 
             this.device.addEventListener('gattserverdisconnected', this.onDisconnected.bind(this));
 
             console.log("Conectando ao servidor GATT...");
-            
-            // Retry logic for connection
-            let connected = false;
-            let retryCount = 0;
-            const maxRetries = 3;
-
-            while (!connected && retryCount < maxRetries) {
-                try {
-                    this.server = await this.device.gatt.connect();
-                    connected = true;
-                } catch (err) {
-                    console.warn(`Tentativa de conexão ${retryCount + 1} falhou:`, err);
-                    retryCount++;
-                    if (retryCount >= maxRetries) throw err;
-                    await new Promise(r => setTimeout(r, 1000)); // Espera 1s entre tentativas
-                }
-            }
+            this.server = await this.device.gatt.connect();
 
             console.log("Procurando serviços...");
             // Tenta conectar no serviço WeDo 2.0
