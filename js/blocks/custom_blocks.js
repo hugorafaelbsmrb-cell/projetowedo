@@ -106,41 +106,48 @@ export function defineCustomBlocks() {
 
     // --- Generators ---
 
-    Blockly.JavaScript['event_start'] = function(block) {
-        // The start block is just an entry point, it doesn't generate code itself 
-        // that executes, but it might be used to wrap logic.
-        // In our simple linear execution model, we just ignore it and generate the next blocks.
+    const generator = Blockly.JavaScript;
+    
+    // Helper to register generator correctly for v10+ or older
+    function registerGenerator(blockName, generatorFunction) {
+        if (generator.forBlock) {
+            generator.forBlock[blockName] = generatorFunction;
+        } else {
+            generator[blockName] = generatorFunction;
+        }
+    }
+
+    registerGenerator('event_start', function(block) {
+        // The start block is just an entry point
         return '';
-    };
+    });
 
-    Blockly.JavaScript['motor_on'] = function(block) {
-        var speed = Blockly.JavaScript.valueToCode(block, 'SPEED', Blockly.JavaScript.ORDER_ATOMIC) || '100';
-        // Generate async call
+    registerGenerator('motor_on', function(block) {
+        var speed = generator.valueToCode(block, 'SPEED', generator.ORDER_ATOMIC) || '100';
         return `await driver.motorOn(${speed});\n`;
-    };
+    });
 
-    Blockly.JavaScript['motor_off'] = function(block) {
+    registerGenerator('motor_off', function(block) {
         return `await driver.motorOff();\n`;
-    };
+    });
 
-    Blockly.JavaScript['control_wait'] = function(block) {
-        var duration = Blockly.JavaScript.valueToCode(block, 'DURATION', Blockly.JavaScript.ORDER_ATOMIC) || '1';
-        // Convert seconds to ms
+    registerGenerator('control_wait', function(block) {
+        var duration = generator.valueToCode(block, 'DURATION', generator.ORDER_ATOMIC) || '1';
         return `await driver.wait(${duration} * 1000);\n`;
-    };
+    });
 
-    Blockly.JavaScript['sensor_distance'] = function(block) {
+    registerGenerator('sensor_distance', function(block) {
         var code = 'await driver.getDistance()';
-        return [code, Blockly.JavaScript.ORDER_AWAIT || Blockly.JavaScript.ORDER_ATOMIC];
-    };
+        return [code, generator.ORDER_AWAIT || generator.ORDER_ATOMIC];
+    });
 
-    Blockly.JavaScript['sensor_tilt'] = function(block) {
+    registerGenerator('sensor_tilt', function(block) {
         var code = 'await driver.getTilt()';
-        return [code, Blockly.JavaScript.ORDER_AWAIT || Blockly.JavaScript.ORDER_ATOMIC];
-    };
+        return [code, generator.ORDER_AWAIT || generator.ORDER_ATOMIC];
+    });
 
-    Blockly.JavaScript['sound_play'] = function(block) {
+    registerGenerator('sound_play', function(block) {
         var sound = block.getFieldValue('SOUND');
         return `await driver.playSound("${sound}");\n`;
-    };
+    });
 }
