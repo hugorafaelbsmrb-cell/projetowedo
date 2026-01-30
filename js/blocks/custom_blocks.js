@@ -81,6 +81,26 @@ export function defineCustomBlocks() {
         }
     };
 
+    // Motor B: Set Speed (Specific Port)
+    Blockly.Blocks['motor_b_speed'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("Motor B")
+                .appendField(new Blockly.FieldImage(
+                    "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIvPjxwYXRoIGQ9Ik0xMiA2djEyIi8+PHBhdGggZD0iTTE2IDhsLTQgNC00LTQiLz48L3N2Zz4=",
+                    20, 20, "Motor"
+                ));
+            this.appendValueInput("SPEED")
+                .setCheck("Number")
+                .appendField("Velocidade");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(COLOUR_MOTION);
+            this.setTooltip("Liga o Motor B (Porta 2) na velocidade definida");
+            this.setInputsInline(true);
+        }
+    };
+
     // Motor: Off
     Blockly.Blocks['motor_off'] = {
         init: function() {
@@ -227,6 +247,11 @@ export function defineCustomBlocks() {
     registerGenerator('motor_a_speed', function(block) {
         var speed = generator.valueToCode(block, 'SPEED', generator.ORDER_ATOMIC) || '100';
         return `await driver.motorA(${speed});\n`;
+    });
+
+    registerGenerator('motor_b_speed', function(block) {
+        var speed = generator.valueToCode(block, 'SPEED', generator.ORDER_ATOMIC) || '100';
+        return `await driver.motorB(${speed});\n`;
     });
 
     registerGenerator('motor_off', function(block) {

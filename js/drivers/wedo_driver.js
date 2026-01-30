@@ -215,11 +215,21 @@ export class WeDoDriver {
         if (s > 100) s = 100;
         if (s < -100) s = -100;
 
-        console.log(`WeDo: Motor A ON ${s}`);
-        
+        console.log(`WeDo: Motor A (Porta 1) ON ${s}`);
         // Porta 1 é o padrão para Motor A no WeDo 2.0
-        // Se falhar, usuários podem precisar trocar a porta física
         await this.sendCommand([1, 0x01, 0x01, s]);
+    }
+
+    async motorB(speed) {
+        // Especificamente para Motor B (Porta 2)
+        let s = parseInt(speed);
+        if (isNaN(s)) s = 100;
+        if (s > 100) s = 100;
+        if (s < -100) s = -100;
+
+        console.log(`WeDo: Motor B (Porta 2) ON ${s}`);
+        // Porta 2 é o padrão para Motor B no WeDo 2.0
+        await this.sendCommand([2, 0x01, 0x01, s]);
     }
 
     async motorOff() {

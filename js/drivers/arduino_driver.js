@@ -120,6 +120,13 @@ export class ArduinoDriver {
         await this.sendCommand(`MOTOR:${parseInt(speed)}`);
     }
 
+    async motorB(speed) {
+        // Mapear Motor B também para o motor principal por enquanto, ou ignorar
+        console.log(`Arduino: Motor B ON ${speed}`);
+        // await this.sendCommand(`MOTORB:${parseInt(speed)}`); // Futuro
+        await this.sendCommand(`MOTOR:${parseInt(speed)}`);
+    }
+
     async motorOff() {
         console.log("Arduino: Motor OFF");
         await this.sendCommand("MOTOR:0");
