@@ -32,12 +32,15 @@ export class WeDoDriver {
         try {
             console.log("Solicitando dispositivo WeDo 2.0...");
             
-            // Configuração permissiva (acceptAllDevices: true) conforme solicitado
+            // 1) CONEXÃO BLE: Configuração permissiva e listagem de serviços
             this.device = await navigator.bluetooth.requestDevice({
                 acceptAllDevices: true,
                 optionalServices: [
                     this.WEDO_SERVICE_UUID, 
-                    this.LPF2_SERVICE_UUID
+                    this.LPF2_SERVICE_UUID,
+                    // Incluindo UUIDs comuns de serviços LEGO para garantir descoberta
+                    "00001623-1212-efde-1623-785feabcd123",
+                    "00001523-1212-efde-1523-785feabcd123"
                 ]
             });
 
@@ -51,26 +54,35 @@ export class WeDoDriver {
 
             console.log("Procurando serviços...");
             
-            // Estratégia de Descoberta Robusta LPF2
-            // Em vez de pedir um serviço específico e falhar, listamos todos.
+            // Listar todos os serviços disponíveis do dispositivo
             const services = await this.server.getPrimaryServices();
             console.log("Serviços encontrados:", services.map(s => s.uuid));
 
             this.characteristic = null;
 
-            // Percorrer serviços para encontrar a característica 1624
+            // Percorrer todas as characteristics de cada serviço para encontrar a 1624
             for (const service of services) {
                 console.log(`Explorando serviço: ${service.uuid}`);
                 try {
                     const characteristics = await service.getCharacteristics();
-                    console.log(`  Características: ${characteristics.map(c => c.uuid)}`);
+                    // console.log(`  Características: ${characteristics.map(c => c.uuid)}`);
                     
                     const targetChar = characteristics.find(c => c.uuid === this.LPF2_COMMAND_UUID);
                     if (targetChar) {
                         this.characteristic = targetChar;
-                        this.service = service; // Salva o serviço onde encontrou
+                        this.service = service;
                         console.log(`  -> Característica de Comando LPF2 (1624) ENCONTRADA!`);
-                        break; // Sucesso
+                        
+                        // Tentar iniciar notificações se possível (para sensores)
+                        try {
+                            await this.characteristic.startNotifications();
+                            this.characteristic.addEventListener('characteristicvaluechanged', this.handleNotification.bind(this));
+                            console.log("  -> Notificações ativadas na característica 1624");
+                        } catch (eNotify) {
+                            console.warn("  -> Não foi possível ativar notificações na 1624:", eNotify);
+                        }
+                        
+                        break;
                     }
                 } catch (eServ) {
                     console.warn(`  Erro ao listar características do serviço ${service.uuid}:`, eServ);
@@ -100,6 +112,12 @@ export class WeDoDriver {
         this.connected = false;
     }
 
+    handleNotification(event) {
+        // Placeholder para processamento de dados de sensores
+        // const value = event.target.value;
+        // console.log("Notificação recebida:", value);
+    }
+
     async disconnect() {
         if (this.device && this.device.gatt.connected) {
             this.device.gatt.disconnect();
@@ -122,22 +140,21 @@ export class WeDoDriver {
             return;
         }
 
-        // Adicionar comando à fila de execução
+        // 5) ESTABILIDADE: Fila de comandos e delay
         this.commandQueue = this.commandQueue.then(async () => {
             const buffer = new Uint8Array(data);
             
             try {
-                // console.log(`WeDo: Enviando [${data.map(b => b.toString(16)).join(', ')}]`);
-                // Uso de writeValueWithResponse conforme solicitado
+                // Usar writeValueWithResponse conforme solicitado
                 await this.characteristic.writeValueWithResponse(buffer);
-                await new Promise(r => setTimeout(r, 50)); // Delay de segurança
+                // Delay pequeno entre comandos (20-50ms)
+                await new Promise(r => setTimeout(r, 40)); 
             } catch (e) {
                 const isGattBusy = e.name === 'NetworkError' && e.message.includes('GATT operation already in progress');
                 
                 if (isGattBusy) {
                     console.warn("GATT ocupado, tentando novamente em breve...");
                     await new Promise(r => setTimeout(r, 100));
-                    // Uma retentativa simples
                     try {
                         await this.characteristic.writeValueWithResponse(buffer);
                     } catch (retryErr) {
@@ -156,20 +173,21 @@ export class WeDoDriver {
 
     // --- Actions (LPF2 Protocol) ---
 
+    // 2) MOTOR
     async motorA(speed) {
         let s = parseInt(speed);
         if (isNaN(s)) s = 100;
         if (s > 100) s = 100;
         if (s < -100) s = -100;
 
-        // Converter para complemento de 2 (Uint8)
+        // Converter para complemento de 2 (Uint8) para valores negativos
         let powerByte = s;
         if (powerByte < 0) powerByte = 256 + powerByte;
 
         console.log(`WeDo: Motor A (Porta 1) Speed ${s}`);
         
         // Comando LPF2 Exato: [0x06, 0x00, 0x81, PORT, 0x11, 0x51, POWER]
-        // Porta Motor A = 0x01
+        // PORT: 0x01 (Motor A)
         await this.sendCommand([0x06, 0x00, 0x81, 0x01, 0x11, 0x51, powerByte]);
     }
 
@@ -185,23 +203,33 @@ export class WeDoDriver {
         console.log(`WeDo: Motor B (Porta 2) Speed ${s}`);
         
         // Comando LPF2 Exato: [0x06, 0x00, 0x81, PORT, 0x11, 0x51, POWER]
-        // Porta Motor B = 0x02
+        // PORT: 0x02 (Motor B)
         await this.sendCommand([0x06, 0x00, 0x81, 0x02, 0x11, 0x51, powerByte]);
     }
 
     async motorOff() {
         console.log("WeDo: Motor OFF");
-        // Desligar Porta 1 e Porta 2
-        await this.sendCommand([0x06, 0x00, 0x81, 0x01, 0x11, 0x51, 0x00]); // Off Motor A
-        await new Promise(r => setTimeout(r, 50));
-        await this.sendCommand([0x06, 0x00, 0x81, 0x02, 0x11, 0x51, 0x00]); // Off Motor B
+        // Desligar Porta 1 e Porta 2 (Velocidade 0)
+        await this.sendCommand([0x06, 0x00, 0x81, 0x01, 0x11, 0x51, 0x00]);
+        await this.sendCommand([0x06, 0x00, 0x81, 0x02, 0x11, 0x51, 0x00]);
     }
 
+    // Compatibilidade com blocos genéricos
+    async motorOn(speed) {
+        // Mapeia o bloco genérico "Motor On" para o Motor A
+        await this.motorA(speed);
+    }
+
+    async playSound(soundName) {
+        console.log(`WeDo: Tocar som ${soundName} (Simulado)`);
+        // Aqui poderia entrar a implementação de Web Audio API se necessário
+        // Por enquanto, apenas evita erro de execução
+    }
+
+    // 3) LED
     async setLED(colorHex) {
-        console.log(`WeDo: Set LED ${colorHex}`);
-        
         // Mapeamento de Cores LPF2
-        // 0:Off, 3:Blue, 6:Green, 7:Yellow, 8:Orange, 9:Red, 10:White
+        // 0:Off, 1:Pink, 2:Purple, 3:Blue, 4:Sky, 5:Teal, 6:Green, 7:Yellow, 8:Orange, 9:Red, 10:White
         const colors = {
             "#000000": 0, // Off
             "#ffc0cb": 1, // Pink
@@ -223,18 +251,25 @@ export class WeDoDriver {
                  index = colors[normalized];
              }
         }
+        
+        console.log(`WeDo: Set LED ${colorHex} (Index ${index})`);
 
-        // Comando LPF2 Exato para LED: [0x05, 0x00, 0x81, 0x06, 0x11, 0x51, COLOR_INDEX]
-        // Porta LED = 0x06
-        await this.sendCommand([0x05, 0x00, 0x81, 0x06, 0x11, 0x51, index]);
+        // Enviar comando via LPF2.
+        // Usando estrutura padrão Output Command para Porta 6 (LED)
+        // [0x06, 0x00, 0x81, 0x06, 0x11, 0x51, COLOR_INDEX]
+        await this.sendCommand([0x06, 0x00, 0x81, 0x06, 0x11, 0x51, index]);
     }
 
+    // 4) SENSORES (Mock / Preparado para implementação real)
     async getDistance() {
-        return Math.floor(Math.random() * 50); 
+        // Retorna valor simulado por enquanto (0-10)
+        return Math.floor(Math.random() * 10); 
     }
 
     async getTilt() {
-        return Math.floor(Math.random() * 2); 
+        // Retorna valor simulado (0-4)
+        // 0: Flat, 1: Up, 2: Down, 3: Left, 4: Right
+        return Math.floor(Math.random() * 5); 
     }
 
     async wait(ms) {
