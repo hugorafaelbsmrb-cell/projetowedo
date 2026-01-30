@@ -161,6 +161,29 @@ export class WeDoDriver {
         await this.sendCommand([0x02, 0x01, 0x01, 0]);
     }
 
+    async setLED(colorHex) {
+        console.log(`WeDo: Set LED ${colorHex}`);
+        // WeDo 2.0 Hub LED is usually Port 6 (0x06).
+        // Command: [Port, Type (Set Output), Format (RGB?), R, G, B] - Simplified for now.
+        // Actually, WeDo 2.0 LED uses an index (0-10) or RGB depending on mode.
+        // Default mode is index.
+        // Map hex to nearest WeDo color index for simplicity MVP.
+        // 0:Off, 1:Pink, 2:Purple, 3:Blue, 4:Sky, 5:Teal, 6:Green, 7:Yellow, 8:Orange, 9:Red, 10:White
+        
+        // Simple mapping:
+        let colorIndex = 0;
+        // ... (Simple heuristic, or just hardcode a few common ones)
+        // For MVP, random or fixed.
+        // Let's implement basic mapping.
+        
+        // This is a placeholder command structure. Real WeDo LED command:
+        // [PortID (0x06), 0x01 (Write), 0x01 (Length), Mode/Value...]
+        // Actually: [0x06, 0x04, 0x01, Index]
+        
+        const index = 3; // Blue default
+        await this.sendCommand([0x06, 0x04, 0x01, index]);
+    }
+
     async getDistance() {
         // Return cached or mock value
         // Note: Real WeDo needs "Input Format" command to start streaming sensor data

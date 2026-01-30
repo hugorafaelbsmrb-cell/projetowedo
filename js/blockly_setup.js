@@ -20,8 +20,47 @@ export function setupBlockly(containerId) {
             },
             {
                 "kind": "category",
+                "name": "Controle",
+                "colour": "#FF8C00",
+                "contents": [
+                    {
+                        "kind": "block",
+                        "type": "control_wait",
+                        "inputs": {
+                            "DURATION": {
+                                "shadow": {
+                                    "type": "math_number",
+                                    "fields": {
+                                        "NUM": 1
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "kind": "block",
+                        "type": "control_repeat",
+                        "inputs": {
+                            "TIMES": {
+                                "shadow": {
+                                    "type": "math_number",
+                                    "fields": {
+                                        "NUM": 10
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "kind": "block",
+                        "type": "controls_if"
+                    }
+                ]
+            },
+            {
+                "kind": "category",
                 "name": "Movimento",
-                "colour": "#4CAF50",
+                "colour": "#0066CC",
                 "contents": [
                     {
                         "kind": "block",
@@ -54,32 +93,17 @@ export function setupBlockly(containerId) {
                     {
                         "kind": "block",
                         "type": "motor_off"
-                    }
-                ]
-            },
-            {
-                "kind": "category",
-                "name": "Controle",
-                "colour": "#2196F3",
-                "contents": [
-                    {
-                        "kind": "block",
-                        "type": "control_wait"
                     },
                     {
                         "kind": "block",
-                        "type": "controls_repeat_ext"
-                    },
-                    {
-                        "kind": "block",
-                        "type": "controls_if"
+                        "type": "led_set_color"
                     }
                 ]
             },
             {
                 "kind": "category",
                 "name": "Sensores",
-                "colour": "#E91E63",
+                "colour": "#4CAF50",
                 "contents": [
                     {
                         "kind": "block",
@@ -109,6 +133,11 @@ export function setupBlockly(containerId) {
         toolbox: toolbox,
         scrollbars: true,
         trashcan: true,
+        move: {
+            scrollbars: true,
+            drag: true,
+            wheel: true
+        },
         grid: {
             spacing: 20,
             length: 3,
@@ -123,6 +152,10 @@ export function setupBlockly(containerId) {
             minScale: 0.3,
             scaleSpeed: 1.2
         },
+        // Configuração para toolbox horizontal na parte inferior
+        toolboxPosition: 'end', 
+        horizontalLayout: true 
+    });,
         renderer: 'geras' // 'geras' is the standard modern renderer, good for rounded look
     });
 

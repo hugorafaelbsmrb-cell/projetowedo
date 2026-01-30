@@ -1,5 +1,12 @@
 export function defineCustomBlocks() {
     
+    // --- Colors ---
+    const COLOUR_EVENT = "#FFD700"; // Amarelo
+    const COLOUR_CONTROL = "#FF8C00"; // Laranja
+    const COLOUR_MOTION = "#0066CC"; // Azul
+    const COLOUR_SENSOR = "#4CAF50"; // Verde
+    const COLOUR_SOUND = "#9C27B0"; // Roxo (Mantido ou ajustado se precisar)
+
     // --- Blocks Definitions ---
 
     // Event: Start
@@ -12,10 +19,9 @@ export function defineCustomBlocks() {
                 ))
                 .appendField("Quando Iniciar");
             this.setNextStatement(true, null);
-            this.setColour("#FFD700");
+            this.setColour(COLOUR_EVENT);
             this.setTooltip("Começa o programa");
             this.setHelpUrl("");
-            this.setStyle('hat_blocks'); // Optional, needs theme support usually, but color works
         }
     };
 
@@ -29,8 +35,9 @@ export function defineCustomBlocks() {
                 .appendField("Velocidade");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour("#4CAF50");
+            this.setColour(COLOUR_MOTION);
             this.setTooltip("Liga o motor na velocidade definida");
+            this.setInputsInline(true);
         }
     };
 
@@ -48,8 +55,9 @@ export function defineCustomBlocks() {
                 .appendField("Velocidade");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour("#4CAF50");
+            this.setColour(COLOUR_MOTION);
             this.setTooltip("Gira o motor na direção e velocidade especificadas");
+            this.setInputsInline(true);
         }
     };
 
@@ -60,8 +68,23 @@ export function defineCustomBlocks() {
                 .appendField("Desligar Motor");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour("#4CAF50");
+            this.setColour(COLOUR_MOTION);
             this.setTooltip("Para o motor");
+            this.setInputsInline(true);
+        }
+    };
+
+    // LED: Set Color
+    Blockly.Blocks['led_set_color'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("Definir LED")
+                .appendField(new Blockly.FieldColour("#ff0000"), "COLOR");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(COLOUR_MOTION);
+            this.setTooltip("Muda a cor do LED do dispositivo");
+            this.setInputsInline(true);
         }
     };
 
@@ -75,8 +98,28 @@ export function defineCustomBlocks() {
                 .appendField("segundos");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour("#2196F3");
+            this.setColour(COLOUR_CONTROL);
             this.setTooltip("Pausa a execução");
+            this.setInputsInline(true);
+        }
+    };
+
+    // Control: Repeat (Loop) - Custom visual wrapper for standard loop
+    Blockly.Blocks['control_repeat'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("Repetir");
+            this.appendValueInput("TIMES")
+                .setCheck("Number");
+            this.appendDummyInput()
+                .appendField("vezes");
+            this.appendStatementInput("DO")
+                .setCheck(null);
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(COLOUR_CONTROL);
+            this.setTooltip("Repete os blocos dentro");
+            this.setInputsInline(true);
         }
     };
 
@@ -88,8 +131,9 @@ export function defineCustomBlocks() {
             this.appendDummyInput()
                 .appendField("Distância (cm)");
             this.setOutput(true, "Number");
-            this.setColour("#E91E63");
+            this.setColour(COLOUR_SENSOR);
             this.setTooltip("Lê a distância em cm");
+            this.setInputsInline(true);
         }
     };
 
@@ -99,8 +143,9 @@ export function defineCustomBlocks() {
             this.appendDummyInput()
                 .appendField("Inclinação/Botão");
             this.setOutput(true, "Number");
-            this.setColour("#E91E63");
+            this.setColour(COLOUR_SENSOR);
             this.setTooltip("Lê status de inclinação ou botão (0 ou 1)");
+            this.setInputsInline(true);
         }
     };
 
@@ -166,6 +211,21 @@ export function defineCustomBlocks() {
 
     registerGenerator('motor_off', function(block) {
         return `await driver.motorOff();\n`;
+    });
+
+    registerGenerator('led_set_color', function(block) {
+        var color = block.getFieldValue('COLOR');
+        return `await driver.setLED("${color}");\n`;
+    });
+
+    registerGenerator('control_repeat', function(block) {
+        var times = generator.valueToCode(block, 'TIMES', generator.ORDER_ATOMIC) || '0';
+        var branch = generator.statementToCode(block, 'DO');
+        return `
+        for (let i = 0; i < ${times}; i++) {
+            ${branch}
+        }
+        `;
     });
 
     registerGenerator('control_wait', function(block) {

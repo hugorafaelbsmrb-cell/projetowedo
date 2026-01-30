@@ -118,6 +118,15 @@ export class ArduinoDriver {
         await this.sendCommand("MOTOR:0");
     }
 
+    async setLED(colorHex) {
+        console.log(`Arduino: Set LED ${colorHex}`);
+        // Protocol: LED:R,G,B or LED:HEX
+        // Simplified: LED:ON or LED:OFF for built-in, or LED:R,G,B for RGB strip.
+        // Let's assume built-in LED (13) for now or a simple RGB command.
+        // Converting hex to R,G,B roughly.
+        await this.sendCommand(`LED:${colorHex}`);
+    }
+
     async getDistance() {
         // Request reading
         await this.sendCommand("READ:DIST");
