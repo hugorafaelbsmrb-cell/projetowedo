@@ -154,8 +154,7 @@ export function setupBlockly(containerId) {
         },
         // Configuração para toolbox horizontal na parte inferior
         toolboxPosition: 'end', 
-        horizontalLayout: true 
-    });,
+        horizontalLayout: true,
         renderer: 'geras' // 'geras' is the standard modern renderer, good for rounded look
     });
 
