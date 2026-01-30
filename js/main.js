@@ -121,6 +121,9 @@ async function handleRun() {
             return;
         }
 
+        // Inicializar o gerador antes de usar blockToCode
+        Blockly.JavaScript.init(workspace);
+
         // Gerar código apenas a partir do bloco de início
         // blockToCode retorna o código para o bloco e seus sucessores
         const code = Blockly.JavaScript.blockToCode(startBlock);

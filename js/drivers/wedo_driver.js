@@ -143,22 +143,39 @@ export class WeDoDriver {
     }
 
     async sendCommand(data) {
-        if (!this.isConnected() || !this.characteristic) return;
-        await this.characteristic.writeValue(new Uint8Array(data));
+        if (!this.isConnected() || !this.characteristic) {
+            console.warn("WeDo: Não conectado ou característica inválida.");
+            return;
+        }
+        try {
+            const buffer = new Uint8Array(data);
+            console.log("WeDo: Enviando comando ->", buffer);
+            await this.characteristic.writeValue(buffer);
+        } catch (e) {
+            console.error("WeDo: Erro ao enviar comando:", e);
+        }
     }
 
     // --- Actions ---
 
     async motorOn(speed) {
-        console.log(`WeDo: Motor ON ${speed}`);
-        // Command format: [PortID, CommandID (1=Motor), Length (1), Speed]
-        // We generally guess ports 1 (0x01) and 2 (0x02) for motors.
-        // Speed: -100 to 100.
+        // Garantir que speed é um número inteiro
+        let s = parseInt(speed);
+        if (isNaN(s)) s = 100;
         
-        // Send to Port 1
-        await this.sendCommand([0x01, 0x01, 0x01, speed]);
-        // Send to Port 2 (Just in case)
-        await this.sendCommand([0x02, 0x01, 0x01, speed]);
+        // Clamp speed -100 to 100
+        if (s > 100) s = 100;
+        if (s < -100) s = -100;
+
+        console.log(`WeDo: Motor ON ${s}`);
+        
+        // Port 1 and 2 are usually the external ports on WeDo 2.0 Hub
+        // Command: [PortID, 0x01 (Exec), 0x01 (Write), Power]
+        
+        // Enviar para Porta 1
+        await this.sendCommand([0x01, 0x01, 0x01, s]);
+        // Enviar para Porta 2
+        await this.sendCommand([0x02, 0x01, 0x01, s]);
     }
 
     async motorOff() {
@@ -169,24 +186,43 @@ export class WeDoDriver {
 
     async setLED(colorHex) {
         console.log(`WeDo: Set LED ${colorHex}`);
-        // WeDo 2.0 Hub LED is usually Port 6 (0x06).
-        // Command: [Port, Type (Set Output), Format (RGB?), R, G, B] - Simplified for now.
-        // Actually, WeDo 2.0 LED uses an index (0-10) or RGB depending on mode.
-        // Default mode is index.
-        // Map hex to nearest WeDo color index for simplicity MVP.
+        
+        // Mapeamento aproximado de HEX para WeDo 2.0 Color Index
         // 0:Off, 1:Pink, 2:Purple, 3:Blue, 4:Sky, 5:Teal, 6:Green, 7:Yellow, 8:Orange, 9:Red, 10:White
+        const colors = {
+            "#000000": 0, // Off
+            "#ffc0cb": 1, // Pink
+            "#800080": 2, // Purple
+            "#0000ff": 3, // Blue
+            "#87ceeb": 4, // Sky
+            "#008080": 5, // Teal
+            "#00ff00": 6, // Green
+            "#ffff00": 7, // Yellow
+            "#ffa500": 8, // Orange
+            "#ff0000": 9, // Red
+            "#ffffff": 10 // White
+        };
+
+        // Encontrar a cor mais próxima ou usar um padrão (Azul)
+        // Simplificação: Switch case para cores comuns do Blockly
+        let index = 3; // Default Blue
         
-        // Simple mapping:
-        let colorIndex = 0;
-        // ... (Simple heuristic, or just hardcode a few common ones)
-        // For MVP, random or fixed.
-        // Let's implement basic mapping.
+        // Normalizar hex
+        colorHex = colorHex.toLowerCase();
         
-        // This is a placeholder command structure. Real WeDo LED command:
-        // [PortID (0x06), 0x01 (Write), 0x01 (Length), Mode/Value...]
-        // Actually: [0x06, 0x04, 0x01, Index]
+        if (colorHex === "#ff0000") index = 9; // Red
+        else if (colorHex === "#00ff00") index = 6; // Green
+        else if (colorHex === "#0000ff") index = 3; // Blue
+        else if (colorHex === "#ffff00") index = 7; // Yellow
+        else if (colorHex === "#ffa500") index = 8; // Orange
+        else if (colorHex === "#ffffff") index = 10; // White
+        else if (colorHex === "#000000") index = 0; // Off
         
-        const index = 3; // Blue default
+        // Command: [PortID (0x06 for LED), 0x04 (Set RGB?), 0x01 (Len), Index]
+        // O comando correto para LED Index mode é: [0x06, 0x01, 0x01, Index]? 
+        // Não, para o LED (Porta 6), o modo padrão é index.
+        // Tentar: [0x06, 0x01, 0x01, Index]
+        
         await this.sendCommand([0x06, 0x04, 0x01, index]);
     }
 
