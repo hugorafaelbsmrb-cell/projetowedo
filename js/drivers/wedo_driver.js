@@ -7,9 +7,13 @@ export class WeDoDriver {
         this.connected = false;
         
         // Constants
-        this.SERVICE_UUID = "00004f0e-1212-efde-1523-785feabcd123"; // Common WeDo 2.0 Service
-        this.IO_CHAR_UUID = "00001565-1212-efde-1523-785feabcd123";
+        // WeDo 2.0 Service UUIDs
+        this.WEDO_SERVICE_UUID = "00001523-1212-efde-1523-785feabcd123"; 
+        this.WEDO_IO_CHAR_UUID = "00001565-1212-efde-1523-785feabcd123"; // Input/Output
         
+        // Powered Up / Boost Service UUIDs (Alternative)
+        this.LPF2_SERVICE_UUID = "00001623-1212-efde-1523-785feabcd123";
+
         this.sensorData = {
             distance: 999,
             tilt: 0
@@ -25,13 +29,12 @@ export class WeDoDriver {
             console.log("Solicitando dispositivo WeDo 2.0...");
             
             // Alterado para aceitar TODOS os dispositivos para depuração e garantir que apareça na lista.
-            // O usuário deverá selecionar o dispositivo LEGO manualmente na lista.
             this.device = await navigator.bluetooth.requestDevice({
                 acceptAllDevices: true,
                 optionalServices: [
-                    this.SERVICE_UUID, 
-                    "00001523-1212-efde-1523-785feabcd123",
-                    this.IO_CHAR_UUID
+                    this.WEDO_SERVICE_UUID, 
+                    this.LPF2_SERVICE_UUID,
+                    this.WEDO_IO_CHAR_UUID
                 ]
             });
 
@@ -40,29 +43,45 @@ export class WeDoDriver {
             console.log("Conectando ao servidor GATT...");
             this.server = await this.device.gatt.connect();
 
-            console.log("Obtendo serviço...");
-            // Try the main service
+            console.log("Procurando serviços...");
+            // Tenta conectar no serviço WeDo 2.0
             try {
-                this.service = await this.server.getPrimaryService(this.SERVICE_UUID);
-            } catch (e) {
-                // Fallback
-                this.service = await this.server.getPrimaryService("00001523-1212-efde-1523-785feabcd123");
+                this.service = await this.server.getPrimaryService(this.WEDO_SERVICE_UUID);
+                console.log("Serviço WeDo 2.0 encontrado!");
+            } catch (e1) {
+                console.warn("Serviço WeDo 2.0 não encontrado. Tentando LPF2...", e1);
+                try {
+                    this.service = await this.server.getPrimaryService(this.LPF2_SERVICE_UUID);
+                    console.log("Serviço LPF2 encontrado!");
+                } catch (e2) {
+                    throw new Error("Serviço LEGO não encontrado no dispositivo. Verifique se é um WeDo 2.0 ou Hub compatível.");
+                }
             }
 
             console.log("Obtendo característica de IO...");
-            this.characteristic = await this.service.getCharacteristic(this.IO_CHAR_UUID);
+            try {
+                this.characteristic = await this.service.getCharacteristic(this.WEDO_IO_CHAR_UUID);
+            } catch (e3) {
+                // Se falhar, tenta listar todas as características para debug (no console) e lança erro
+                console.error("Característica IO não encontrada.");
+                throw new Error("Não foi possível acessar o controle do motor (IO Characteristic).");
+            }
             
-            // Start Notifications
-            await this.characteristic.startNotifications();
-            this.characteristic.addEventListener('characteristicvaluechanged', this.handleNotification.bind(this));
+            // Start Notifications (Ignora erro se não suportado, para não bloquear conexão)
+            try {
+                await this.characteristic.startNotifications();
+                this.characteristic.addEventListener('characteristicvaluechanged', this.handleNotification.bind(this));
+            } catch (e4) {
+                console.warn("Não foi possível iniciar notificações de sensores:", e4);
+            }
 
             this.connected = true;
-            console.log("WeDo 2.0 Conectado!");
+            console.log("WeDo 2.0 Conectado e Pronto!");
             return true;
         } catch (error) {
-            console.error("Erro ao conectar WeDo 2.0:", error);
-            this.connected = false;
-            return false;
+            console.error("Erro detalhado na conexão WeDo:", error);
+            // Propaga o erro original para a UI mostrar a mensagem correta
+            throw error; 
         }
     }
 

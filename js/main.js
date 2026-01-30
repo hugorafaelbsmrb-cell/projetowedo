@@ -85,7 +85,7 @@ async function handleConnect() {
         } else {
             updateStatus("Erro: " + error.message);
         }
-        alert("Dica: Certifique-se que o botão do WeDo 2.0 foi pressionado e a luz está piscando.");
+        alert("Detalhe do Erro: " + error.message + "\n\nDica: Abra o console (F12) para ver mais detalhes.");
     }
 }
 
