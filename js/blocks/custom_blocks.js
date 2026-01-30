@@ -61,6 +61,26 @@ export function defineCustomBlocks() {
         }
     };
 
+    // Motor A: Set Speed (Specific Port)
+    Blockly.Blocks['motor_a_speed'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("Motor A")
+                .appendField(new Blockly.FieldImage(
+                    "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIvPjxwYXRoIGQ9Ik0xMiA2djEyIi8+PHBhdGggZD0iTTE2IDhsLTQgNC00LTQiLz48L3N2Zz4=",
+                    20, 20, "Motor"
+                ));
+            this.appendValueInput("SPEED")
+                .setCheck("Number")
+                .appendField("Velocidade");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(COLOUR_MOTION);
+            this.setTooltip("Liga o Motor A (Porta 1) na velocidade definida");
+            this.setInputsInline(true);
+        }
+    };
+
     // Motor: Off
     Blockly.Blocks['motor_off'] = {
         init: function() {
@@ -197,18 +217,16 @@ export function defineCustomBlocks() {
         var direction = block.getFieldValue('DIRECTION');
         var speed = generator.valueToCode(block, 'SPEED', generator.ORDER_ATOMIC) || '100';
         
-        // Ensure speed is treated as number for calculation if it's a string from generator
-        // But generator usually returns string code.
-        // We want to construct the string: "-speed" or "speed".
-        // Note: If speed expression is complex (e.g. "variable + 1"), we need parens.
-        // But for simplicity, we assume simple numbers. 
-        // Safer approach: multiply by -1 if CCW.
-        
         if (direction === 'CCW') {
              return `await driver.motorOn(-1 * (${speed}));\n`;
         } else {
              return `await driver.motorOn(${speed});\n`;
         }
+    });
+
+    registerGenerator('motor_a_speed', function(block) {
+        var speed = generator.valueToCode(block, 'SPEED', generator.ORDER_ATOMIC) || '100';
+        return `await driver.motorA(${speed});\n`;
     });
 
     registerGenerator('motor_off', function(block) {

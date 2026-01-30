@@ -113,6 +113,13 @@ export class ArduinoDriver {
         await this.sendCommand(`MOTOR:${parseInt(speed)}`);
     }
 
+    async motorA(speed) {
+        // Mapear Motor A para o mesmo comando de motor padrão por enquanto
+        // ou usar um comando específico se o firmware suportar (ex: MOTORA:speed)
+        console.log(`Arduino: Motor A ON ${speed}`);
+        await this.sendCommand(`MOTOR:${parseInt(speed)}`);
+    }
+
     async motorOff() {
         console.log("Arduino: Motor OFF");
         await this.sendCommand("MOTOR:0");
