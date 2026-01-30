@@ -41,6 +41,9 @@ export class WeDoDriver {
                 ]
             });
 
+            // Pequeno delay para estabilidade do empilhamento Bluetooth (fix para Windows)
+            await new Promise(r => setTimeout(r, 500));
+
             this.device.addEventListener('gattserverdisconnected', this.onDisconnected.bind(this));
 
             console.log("Conectando ao servidor GATT...");
@@ -138,7 +141,12 @@ export class WeDoDriver {
         if (this.device && this.device.gatt.connected) {
             this.device.gatt.disconnect();
         }
+        this.device = null;
+        this.server = null;
+        this.service = null;
+        this.characteristic = null;
         this.connected = false;
+        console.log("WeDo: Desconectado e limpo.");
     }
 
     isConnected() {
