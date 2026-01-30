@@ -60,11 +60,32 @@ export class WeDoDriver {
 
             console.log("Obtendo característica de IO...");
             try {
+                // Tenta obter a característica padrão primeiro
                 this.characteristic = await this.service.getCharacteristic(this.WEDO_IO_CHAR_UUID);
             } catch (e3) {
-                // Se falhar, tenta listar todas as características para debug (no console) e lança erro
-                console.error("Característica IO não encontrada.");
-                throw new Error("Não foi possível acessar o controle do motor (IO Characteristic).");
+                console.warn("Característica padrão 1565 não encontrada. Procurando alternativas...");
+                
+                // Estratégia de fallback: Listar TODAS as características e encontrar uma que sirva
+                try {
+                    const characteristics = await this.service.getCharacteristics();
+                    console.log("Características disponíveis:", characteristics.map(c => c.uuid));
+                    
+                    // Procura por qualquer característica que pareça ser de I/O (Output)
+                    // Prioridade: 1565 > 1560 > 1563 > Qualquer com suporte a escrita
+                    this.characteristic = characteristics.find(c => c.uuid.includes("1565")) || 
+                                          characteristics.find(c => c.uuid.includes("1560")) ||
+                                          characteristics.find(c => c.uuid.includes("1563")) ||
+                                          characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse);
+                                          
+                    if (!this.characteristic) {
+                        throw new Error("Nenhuma característica de escrita encontrada no serviço.");
+                    }
+                    console.log("Característica alternativa selecionada:", this.characteristic.uuid);
+                    
+                } catch (eFallback) {
+                    console.error("Falha ao buscar características alternativas:", eFallback);
+                    throw new Error("Não foi possível acessar o controle do motor. Verifique o console para UUIDs disponíveis.");
+                }
             }
             
             // Start Notifications (Ignora erro se não suportado, para não bloquear conexão)
