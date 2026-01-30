@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma de Programação Educacional</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Blockly Core -->
+    <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+    <!-- Blockly Languages -->
+    <script src="https://unpkg.com/blockly/msg/pt-br.js"></script>
+    <!-- Blockly JavaScript Generator -->
+    <script src="https://unpkg.com/blockly/javascript_compressed.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div id="app-container">
+        <!-- Header / Toolbar -->
+        <header class="toolbar">
+            <div class="logo-area">
+                <h1>CodeKids</h1>
+            </div>
+            
+            <div class="controls-area">
+                <div class="hardware-select">
+                    <select id="hardware-type">
+                        <option value="arduino">Arduino (USB)</option>
+                        <option value="wedo">LEGO WeDo 2.0 (Bluetooth)</option>
+                    </select>
+                    <button id="btn-connect" class="btn btn-round btn-blue" title="Conectar">
+                        <i data-lucide="plug"></i>
+                    </button>
+                    <span id="connection-status" class="status-indicator disconnected"></span>
+                </div>
+
+                <div class="execution-controls">
+                    <button id="btn-run" class="btn btn-round btn-green" title="Executar">
+                        <i data-lucide="play"></i>
+                    </button>
+                    <button id="btn-stop" class="btn btn-round btn-red" title="Parar">
+                        <i data-lucide="square"></i>
+                    </button>
+                </div>
+
+                <div class="file-controls" style="margin-left: 20px; display: flex; gap: 10px;">
+                    <button id="btn-save" class="btn btn-round btn-blue" title="Salvar Projeto" style="width: 50px; height: 50px;">
+                        <i data-lucide="save"></i>
+                    </button>
+                    <button id="btn-load" class="btn btn-round btn-blue" title="Carregar Projeto" style="width: 50px; height: 50px;">
+                        <i data-lucide="folder-open"></i>
+                    </button>
+                    <input type="file" id="file-input" accept=".xml" style="display: none;">
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main id="blockly-div"></main>
+
+        <!-- Status/Console Area (Optional, minimal) -->
+        <div id="status-bar">
+            <span id="status-text">Pronto para começar!</span>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
