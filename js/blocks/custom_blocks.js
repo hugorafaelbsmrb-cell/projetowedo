@@ -77,9 +77,10 @@ export function defineCustomBlocks() {
     // LED: Set Color
     Blockly.Blocks['led_set_color'] = {
         init: function() {
+            const field = Blockly.FieldColour ? new Blockly.FieldColour("#ff0000") : new Blockly.FieldTextInput("#ff0000");
             this.appendDummyInput()
                 .appendField("Definir LED")
-                .appendField(new Blockly.FieldColour("#ff0000"), "COLOR");
+                .appendField(field, "COLOR");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLOUR_MOTION);
@@ -163,8 +164,9 @@ export function defineCustomBlocks() {
                 ]), "SOUND");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour("#9C27B0");
+            this.setColour(COLOUR_SOUND);
             this.setTooltip("Toca um som no computador");
+            this.setInputsInline(true);
         }
     };
 
