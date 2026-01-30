@@ -28,6 +28,9 @@ export class WeDoDriver {
             throw new Error("Web Bluetooth API não suportada neste navegador.");
         }
 
+        // Garante limpeza de estados anteriores
+        await this.disconnect();
+
         try {
             console.log("Solicitando dispositivo WeDo 2.0...");
             
@@ -47,7 +50,23 @@ export class WeDoDriver {
             this.device.addEventListener('gattserverdisconnected', this.onDisconnected.bind(this));
 
             console.log("Conectando ao servidor GATT...");
-            this.server = await this.device.gatt.connect();
+            
+            // Retry logic for connection
+            let connected = false;
+            let retryCount = 0;
+            const maxRetries = 3;
+
+            while (!connected && retryCount < maxRetries) {
+                try {
+                    this.server = await this.device.gatt.connect();
+                    connected = true;
+                } catch (err) {
+                    console.warn(`Tentativa de conexão ${retryCount + 1} falhou:`, err);
+                    retryCount++;
+                    if (retryCount >= maxRetries) throw err;
+                    await new Promise(r => setTimeout(r, 1000)); // Espera 1s entre tentativas
+                }
+            }
 
             console.log("Procurando serviços...");
             // Tenta conectar no serviço WeDo 2.0
@@ -113,6 +132,12 @@ export class WeDoDriver {
             return true;
         } catch (error) {
             console.error("Erro detalhado na conexão WeDo:", error);
+            
+            // Tratamento específico para erro comum no Windows
+            if (error.message && error.message.includes("Connection attempt failed")) {
+                throw new Error("Erro de conexão Bluetooth (Windows). \n\nSOLUÇÃO:\n1. Vá nas Configurações do Windows > Bluetooth.\n2. REMOVA o dispositivo 'LPF2 Smart Hub' ou 'WeDo Hub'.\n3. Reinicie o Hub (segure o botão até apagar, ligue de novo).\n4. Tente conectar novamente AQUI no navegador.");
+            }
+            
             // Propaga o erro original para a UI mostrar a mensagem correta
             throw error; 
         }
