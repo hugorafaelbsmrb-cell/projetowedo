@@ -64,6 +64,20 @@ export function setupBlockly(containerId) {
                 "contents": [
                     {
                         "kind": "block",
+                        "type": "motor_a_speed",
+                        "inputs": {
+                            "SPEED": {
+                                "shadow": {
+                                    "type": "math_number",
+                                    "fields": {
+                                        "NUM": 50
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "kind": "block",
                         "type": "motor_on",
                         "inputs": {
                             "SPEED": {
