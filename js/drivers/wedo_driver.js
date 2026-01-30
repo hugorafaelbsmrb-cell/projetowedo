@@ -50,38 +50,35 @@ export class WeDoDriver {
             this.server = await this.device.gatt.connect();
 
             console.log("Procurando serviços...");
-            // Tenta conectar no serviço WeDo 2.0 ou LPF2
-            try {
-                this.service = await this.server.getPrimaryService(this.WEDO_SERVICE_UUID);
-                console.log("Serviço WeDo 2.0 encontrado!");
-            } catch (e1) {
-                console.warn("Serviço WeDo 2.0 não encontrado. Tentando LPF2...", e1);
+            
+            // Estratégia de Descoberta Robusta LPF2
+            // Em vez de pedir um serviço específico e falhar, listamos todos.
+            const services = await this.server.getPrimaryServices();
+            console.log("Serviços encontrados:", services.map(s => s.uuid));
+
+            this.characteristic = null;
+
+            // Percorrer serviços para encontrar a característica 1624
+            for (const service of services) {
+                console.log(`Explorando serviço: ${service.uuid}`);
                 try {
-                    this.service = await this.server.getPrimaryService(this.LPF2_SERVICE_UUID);
-                    console.log("Serviço LPF2 encontrado!");
-                } catch (e2) {
-                    throw new Error("Serviço LEGO não encontrado no dispositivo. Verifique se é um WeDo 2.0 ou Hub compatível.");
+                    const characteristics = await service.getCharacteristics();
+                    console.log(`  Características: ${characteristics.map(c => c.uuid)}`);
+                    
+                    const targetChar = characteristics.find(c => c.uuid === this.LPF2_COMMAND_UUID);
+                    if (targetChar) {
+                        this.characteristic = targetChar;
+                        this.service = service; // Salva o serviço onde encontrou
+                        console.log(`  -> Característica de Comando LPF2 (1624) ENCONTRADA!`);
+                        break; // Sucesso
+                    }
+                } catch (eServ) {
+                    console.warn(`  Erro ao listar características do serviço ${service.uuid}:`, eServ);
                 }
             }
 
-            console.log("Obtendo característica de comando (1624)...");
-            
-            try {
-                // Tenta obter a característica específica 1624
-                this.characteristic = await this.service.getCharacteristic(this.LPF2_COMMAND_UUID);
-                console.log("Característica de Comando LPF2 (1624) pronta!");
-
-            } catch (eChar) {
-                console.error("Erro ao obter característica 1624:", eChar);
-                // Fallback: Tenta listar todas e encontrar pelo UUID se o getCharacteristic falhar
-                const characteristics = await this.service.getCharacteristics();
-                console.log("Características disponíveis:", characteristics.map(c => c.uuid));
-                
-                this.characteristic = characteristics.find(c => c.uuid === this.LPF2_COMMAND_UUID);
-                
-                if (!this.characteristic) {
-                    throw new Error("Característica de comando LPF2 (1624) não encontrada.");
-                }
+            if (!this.characteristic) {
+                throw new Error("Falha crítica: Característica de comando LPF2 (1624) não encontrada em nenhum serviço.");
             }
             
             this.connected = true;
