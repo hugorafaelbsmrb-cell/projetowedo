@@ -34,9 +34,12 @@ export class WeDoDriver {
         try {
             console.log("Solicitando dispositivo WeDo 2.0...");
             
-            // Alterado para aceitar TODOS os dispositivos para depuração e garantir que apareça na lista.
+            // Alterado: Usar filtros específicos em vez de acceptAllDevices pode melhorar a estabilidade no Windows
             this.device = await navigator.bluetooth.requestDevice({
-                acceptAllDevices: true,
+                filters: [
+                    { services: [this.WEDO_SERVICE_UUID] },
+                    { namePrefix: "LPF2" } 
+                ],
                 optionalServices: [
                     this.WEDO_SERVICE_UUID, 
                     this.LPF2_SERVICE_UUID,
@@ -44,8 +47,8 @@ export class WeDoDriver {
                 ]
             });
 
-            // Pequeno delay para estabilidade do empilhamento Bluetooth (fix para Windows)
-            await new Promise(r => setTimeout(r, 500));
+            // Aumentado delay para 1s para garantir que o Windows preparou o handle do dispositivo
+            await new Promise(r => setTimeout(r, 1000));
 
             this.device.addEventListener('gattserverdisconnected', this.onDisconnected.bind(this));
 
