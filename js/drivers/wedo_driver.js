@@ -122,10 +122,12 @@ export class WeDoDriver {
                             // Se ao final de tudo não tivermos nada, usaremos esta.
                             this.characteristic = writeChar;
                             this.service = service;
-                            // Assumimos Legacy por segurança se for um UUID desconhecido curto, ou LPF2 se for longo... 
-                            // Na dúvida, tentamos LPF2 primeiro se o UUID não for explicitamente o 1565.
-                            this.isLegacy = writeChar.uuid.includes("1565"); 
-                            console.log(`  -> Usando característica genérica (Modo Legacy: ${this.isLegacy})`);
+                            
+                            // MUDANÇA CRÍTICA: Se caiu no fallback genérico, assumimos que é um WeDo 2.0 Legacy (Original)
+                            // pois o Windows frequentemente mascara o UUID 1565.
+                            // Só usamos LPF2 se o UUID for explicitamente confirmado como 1624.
+                            this.isLegacy = true; 
+                            console.log(`  -> Usando característica genérica (Assumindo Modo Legacy: ${this.isLegacy})`);
                         }
                     }
 
@@ -193,6 +195,10 @@ export class WeDoDriver {
         this.commandQueue = this.commandQueue.then(async () => {
             const buffer = new Uint8Array(data);
             
+            // Log Hexadecimal para Debug
+            const hexString = Array.from(buffer).map(b => b.toString(16).padStart(2, '0')).join(' ');
+            console.log(`WeDo Send [${hexString}] (Legacy: ${this.isLegacy})`);
+
             try {
                 // Usar writeValueWithResponse conforme solicitado
                 await this.characteristic.writeValueWithResponse(buffer);
