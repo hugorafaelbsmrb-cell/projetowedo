@@ -154,21 +154,19 @@ export class WeDoDriver {
         // Adicionar comando à fila de execução
         this.commandQueue = this.commandQueue.then(async () => {
             const buffer = new Uint8Array(data);
-            const maxRetries = 5; // Mais tentativas para garantir
+            const maxRetries = 5; 
             
             for (let i = 0; i < maxRetries; i++) {
                 try {
                     // console.log(`WeDo: Enviando [${data.join(',')}]`);
                     await this.characteristic.writeValue(buffer);
-                    // Sucesso! Pequeno delay para estabilidade do BLE stack
-                    await new Promise(r => setTimeout(r, 20)); 
+                    await new Promise(r => setTimeout(r, 50)); // Aumentado delay para estabilidade
                     return;
                 } catch (e) {
                     const isGattBusy = e.name === 'NetworkError' && e.message.includes('GATT operation already in progress');
                     
                     if (isGattBusy) {
-                        // console.warn(`WeDo: Ocupado, retentando (${i+1}/${maxRetries})...`);
-                        await new Promise(r => setTimeout(r, 100 + (i * 50))); // Backoff incremental
+                        await new Promise(r => setTimeout(r, 150 + (i * 50))); 
                     } else {
                         console.error("WeDo: Erro fatal ao enviar:", e);
                         throw e;
@@ -177,7 +175,6 @@ export class WeDoDriver {
             }
             console.error("WeDo: Falha ao enviar comando após várias tentativas.");
         }).catch(err => {
-            // Apenas logar erros da fila para não quebrar a cadeia inteira
             console.error("WeDo: Erro na fila de comandos:", err);
         });
 
@@ -187,49 +184,71 @@ export class WeDoDriver {
     // --- Actions ---
 
     async motorOn(speed) {
-        // Garantir que speed é um número inteiro
+        // ... (código existente mantido se necessário, mas foco em A/B agora)
+        // ...
         let s = parseInt(speed);
         if (isNaN(s)) s = 100;
-        
-        // Clamp speed -100 to 100
         if (s > 100) s = 100;
         if (s < -100) s = -100;
 
-        console.log(`WeDo: Motor ON ${s}`);
-        
-        // Tentar enviar para todas as portas possíveis para garantir
-        // Priorizando portas físicas 1 e 2
+        // Tentar enviar para todas as portas possíveis
         const ports = [1, 2, 0, 3, 4, 5, 6];
-        
         for (const port of ports) {
-            // Command: [PortID, 0x01 (Motor Output), 0x01 (Length), Power]
-            // Usar await aqui não bloqueia a UI, mas enfileira no driver
-            this.sendCommand([port, 0x01, 0x01, s]);
+             // Formato correto WeDo 2.0 Motor: [PortID, 0x01, 0x01, Power]
+             // Testando formato alternativo se o acima falhar: [PortID, 0x01, 0x02, Power] (alguns docs sugerem len 2 para certos modos?)
+             // Mas o padrão LPF2 para Power (Mode 0) é WriteDirect (0x01 is actually execute... wait)
+             
+             // O protocolo WeDo 2.0 correto para "Output Command" é:
+             // [PortID, 0x01 (Execute), 0x02 (WriteDirectModeData?), SubCmd?] 
+             // NÃO.
+             // Protocolo simplificado WeDo 2.0 BLE:
+             // Byte 0: Port ID
+             // Byte 1: 0x01 (Execute immediately)
+             // Byte 2: 0x02 (Length of sub-command + payload? No. Byte 2 is Command ID usually?)
+             
+             // Reference: https://github.com/nathankellenicki/node-wedo2/blob/master/lib/wedo2.js
+             // port.write(new Buffer([0x01, 0x01, power])); -> No, that's inside a wrapper.
+             
+             // Official WeDo 2.0 Specs (reverse engineered):
+             // Characteristic: 1565 (Input/Output)
+             // Structure: [PortID, 0x01 (Command: Motor Output), 0x01 (Payload Length), Power]
+             // Power: -100 to 100 (int8)
+             
+             // Vamos tentar converter o Power para Int8 corretamente (se for negativo, precisa ser complemento de 2 em Uint8)
+             let powerByte = s;
+             if (powerByte < 0) {
+                 powerByte = 256 + powerByte;
+             }
+
+             await this.sendCommand([port, 0x01, 0x01, powerByte]);
         }
     }
 
     async motorA(speed) {
-        // Especificamente para Motor A (Porta 1)
         let s = parseInt(speed);
         if (isNaN(s)) s = 100;
         if (s > 100) s = 100;
         if (s < -100) s = -100;
 
-        console.log(`WeDo: Motor A (Porta 1) ON ${s}`);
-        // Porta 1 é o padrão para Motor A no WeDo 2.0
-        await this.sendCommand([1, 0x01, 0x01, s]);
+        // Converter para Int8 (byte)
+        let powerByte = s;
+        if (powerByte < 0) powerByte = 256 + powerByte;
+
+        console.log(`WeDo: Motor A (Porta 1) ON ${s} [Byte: ${powerByte}]`);
+        await this.sendCommand([1, 0x01, 0x01, powerByte]);
     }
 
     async motorB(speed) {
-        // Especificamente para Motor B (Porta 2)
         let s = parseInt(speed);
         if (isNaN(s)) s = 100;
         if (s > 100) s = 100;
         if (s < -100) s = -100;
 
-        console.log(`WeDo: Motor B (Porta 2) ON ${s}`);
-        // Porta 2 é o padrão para Motor B no WeDo 2.0
-        await this.sendCommand([2, 0x01, 0x01, s]);
+        let powerByte = s;
+        if (powerByte < 0) powerByte = 256 + powerByte;
+
+        console.log(`WeDo: Motor B (Porta 2) ON ${s} [Byte: ${powerByte}]`);
+        await this.sendCommand([2, 0x01, 0x01, powerByte]);
     }
 
     async motorOff() {
