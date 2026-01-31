@@ -169,11 +169,12 @@ export function defineCustomBlocks() {
     };
 
     // --- Sensors ---
-    // (Keeping them simple for now)
+    // Sensor: Distance
     Blockly.Blocks['sensor_distance'] = {
         init: function() {
             this.appendDummyInput()
-                .appendField("📏");
+                .appendField("📏")
+                .appendField("Distância");
             this.setOutput(true, "Number");
             this.setColour(COLOUR_SENSOR);
             this.setTooltip("Distância");
