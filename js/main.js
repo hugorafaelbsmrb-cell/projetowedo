@@ -63,6 +63,22 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAuth().then(() => {
         loadConfig();
     });
+
+    // Check if running in Iframe
+    if (window.self !== window.top) {
+        console.log("Running in iframe mode - hiding system controls");
+        const sysControls = document.querySelector('.system-controls');
+        if (sysControls) {
+            sysControls.style.display = 'none';
+        }
+    }
+
+    // Register Service Worker (PWA)
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Service Worker Registered', reg))
+            .catch(err => console.warn('Service Worker Failed', err));
+    }
     
     console.log("Plataforma CodeKids Inicializada");
 });
