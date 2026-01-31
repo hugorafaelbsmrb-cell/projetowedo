@@ -46,7 +46,10 @@ export class WeDoDriver {
                     this.LPF2_SERVICE_UUID,
                     // Incluindo UUIDs comuns de serviços LEGO para garantir descoberta
                     "00001623-1212-efde-1623-785feabcd123",
-                    "00001523-1212-efde-1523-785feabcd123"
+                    "00001523-1212-efde-1523-785feabcd123",
+                    // Incluindo UUIDs de CARACTERÍSTICAS importantes para garantir que o Windows permita acesso
+                    this.WEDO_LEGACY_UUID, // 1565
+                    this.LPF2_COMMAND_UUID // 1624
                 ]
             });
 
@@ -127,18 +130,21 @@ export class WeDoDriver {
                 }
             }
 
-            // Fallback Genérico (Último recurso - Cuidado para não pegar 1524 High Speed)
+            // Fallback Genérico (Último recurso - Cuidado para não pegar 1524 High Speed ou 152b Protection)
             if (!this.characteristic) {
                  console.warn("  -> Nenhuma característica oficial encontrada. Tentando fallback genérico seguro...");
                  for (const service of services) {
                      try {
                         const characteristics = await service.getCharacteristics();
-                        // Procurar qualquer writeable QUE NÃO SEJA 1524 ou outras conhecidas de dados
+                        // Procurar qualquer writeable QUE NÃO SEJA de dados ou proteção
                         const writeChar = characteristics.find(c => 
                             (c.properties.write || c.properties.writeWithoutResponse) &&
                             !c.uuid.includes("1524") && // Bloqueia High Speed Data
                             !c.uuid.includes("1560") && // Bloqueia Name
-                            !c.uuid.includes("1561")    // Bloqueia Button
+                            !c.uuid.includes("1561") && // Bloqueia Button
+                            !c.uuid.includes("152b") && // Bloqueia Over Current Protection (Causava erro fatal)
+                            !c.uuid.includes("1526") && // Bloqueia Firmware Revision
+                            !c.uuid.includes("1527")    // Bloqueia Hardware Revision
                         );
                         
                         if (writeChar) {
@@ -234,8 +240,20 @@ export class WeDoDriver {
             console.log(`WeDo Send [${hexString}] (Legacy: ${this.isLegacy})`);
 
             try {
-                // Usar writeValueWithResponse conforme solicitado
-                await this.characteristic.writeValueWithResponse(buffer);
+                // Tenta usar writeWithoutResponse se disponível e preferido (especialmente para Legacy)
+                // Ou se writeWithResponse não for suportado
+                const canWriteNoResp = this.characteristic.properties.writeWithoutResponse;
+                const canWriteResp = this.characteristic.properties.write;
+
+                if (this.isLegacy && canWriteNoResp) {
+                     await this.characteristic.writeValueWithoutResponse(buffer);
+                } else if (canWriteResp) {
+                     await this.characteristic.writeValueWithResponse(buffer);
+                } else {
+                     // Fallback para qualquer um que funcionar
+                     await this.characteristic.writeValue(buffer);
+                }
+
                 // Delay pequeno entre comandos (20-50ms)
                 await new Promise(r => setTimeout(r, 40)); 
             } catch (e) {
