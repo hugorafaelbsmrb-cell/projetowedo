@@ -117,7 +117,16 @@ export function defineCustomBlocks() {
     // LED: Set Color
     Blockly.Blocks['led_set_color'] = {
         init: function() {
-            const field = Blockly.FieldColour ? new Blockly.FieldColour("#ff0000") : new Blockly.FieldTextInput("#ff0000");
+            // Palette WeDo 2.0 (Off, Pink, Purple, Blue, Cyan, Teal, Green, Yellow, Orange, Red, White)
+            const wedoColors = [
+                "#000000", "#ffc0cb", "#800080", "#0000ff", 
+                "#00ffff", "#008080", "#00ff00", "#ffff00", 
+                "#ffa500", "#ff0000", "#ffffff"
+            ];
+            const field = new Blockly.FieldColour("#ff0000");
+            field.setColours(wedoColors);
+            field.setColumns(4);
+
             this.appendDummyInput()
                 .appendField("Definir LED")
                 .appendField(field, "COLOR");
