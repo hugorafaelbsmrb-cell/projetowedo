@@ -1,135 +1,13 @@
 import { defineCustomBlocks } from './blocks/custom_blocks.js';
+import { BLOCK_TEMPLATES } from './blocks/templates.js';
 
-export async function setupBlockly(containerId) {
-    // Fetch icons config from server
-    let iconsConfig = {};
-    try {
-        const response = await fetch('/api/icons');
-        if (response.ok) {
-            iconsConfig = await response.json();
-        }
-    } catch (e) {
-        console.warn('Failed to load icons config, using defaults', e);
-    }
-
+export async function setupBlockly(containerId, blocksConfig) {
+    
     // Define custom blocks with loaded config
-    defineCustomBlocks(iconsConfig);
+    defineCustomBlocks(blocksConfig);
 
-    const toolbox = {
-        "kind": "categoryToolbox",
-        "contents": [
-            {
-                "kind": "category",
-                "name": "Eventos",
-                "colour": "#FF9800", // Orange
-                "contents": [
-                    {
-                        "kind": "block",
-                        "type": "event_start"
-                    }
-                ]
-            },
-            {
-                "kind": "category",
-                "name": "Controle",
-                "colour": "#FFD700", // Yellow
-                "contents": [
-                    {
-                        "kind": "block",
-                        "type": "control_wait",
-                        "inputs": {
-                            "DURATION": {
-                                "shadow": {
-                                    "type": "math_number",
-                                    "fields": {
-                                        "NUM": 1
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    {
-                        "kind": "block",
-                        "type": "control_repeat",
-                        "inputs": {
-                            "TIMES": {
-                                "shadow": {
-                                    "type": "math_number",
-                                    "fields": {
-                                        "NUM": 10
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ]
-            },
-            {
-                "kind": "category",
-                "name": "Movimento",
-                "colour": "#0091EA", // Blue (Motor)
-                "contents": [
-                    {
-                        "kind": "block",
-                        "type": "motor_a_speed",
-                        "inputs": {
-                            "SPEED": {
-                                "shadow": {
-                                    "type": "math_number",
-                                    "fields": {
-                                        "NUM": 50
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    {
-                        "kind": "block",
-                        "type": "motor_on",
-                        "inputs": {
-                            "SPEED": {
-                                "shadow": {
-                                    "type": "math_number",
-                                    "fields": {
-                                        "NUM": 50
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    {
-                        "kind": "block",
-                        "type": "motor_off"
-                    },
-                    {
-                        "kind": "block",
-                        "type": "motor_spin",
-                        "inputs": {
-                            "SPEED": {
-                                "shadow": {
-                                    "type": "math_number",
-                                    "fields": {
-                                        "NUM": 50
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ]
-            },
-            {
-                "kind": "category",
-                "name": "Sensores",
-                "colour": "#4CAF50", // Green
-                "contents": [
-                    {
-                         "kind": "block",
-                         "type": "led_set_color"
-                    }
-                ]
-            }
-        ]
-    };
+    // Build Toolbox Dynamically
+    const toolbox = buildToolbox(blocksConfig);
 
     const workspace = Blockly.inject(containerId, {
         toolbox: toolbox,
@@ -137,7 +15,7 @@ export async function setupBlockly(containerId) {
         trashcan: true,
         sounds: true,
         media: 'https://unpkg.com/blockly/media/',
-        renderer: 'zelos', // Scratch-like renderer (capsule shapes)
+        renderer: 'zelos', 
         horizontalLayout: true,
         toolboxPosition: 'end',
         zoom: {
@@ -155,14 +33,82 @@ export async function setupBlockly(containerId) {
         }
     });
 
-    // Initialize JavaScript generator if not already present
-    if (!Blockly.JavaScript) {
-        // Just in case the CDN didn't load it or it's named differently in newer versions (it's usually in a separate file or part of the bundle)
-        // We included the core, but we might need the generator file.
-        // Actually, blockly.min.js usually contains the core. We might need `javascript_compressed.js`.
-        // I'll assume the user will need to add that to index.html if it's missing, but let's check.
-        // For now, let's assume it's available or we will add it to index.html later.
+    return workspace;
+}
+
+function buildToolbox(blocksConfig) {
+    // Group blocks by category
+    const categories = {};
+    
+    // Initialize standard categories
+    const standardCats = ['Eventos', 'Movimento', 'Controle', 'Sensores', 'Som'];
+    standardCats.forEach(cat => categories[cat] = []);
+
+    // Add Dynamic Blocks
+    if (Array.isArray(blocksConfig)) {
+        blocksConfig.forEach(block => {
+            const template = BLOCK_TEMPLATES[block.type];
+            if (template) {
+                const cat = template.category || 'Outros';
+                if (!categories[cat]) categories[cat] = [];
+                
+                // Create block XML/JSON
+                const blockJson = {
+                    kind: "block",
+                    type: block.id
+                };
+                
+                // Add default shadow values (Heuristic)
+                if (block.type === 'motor_on' || block.type === 'motor_spin') {
+                    blockJson.inputs = { SPEED: { shadow: { type: "math_number", fields: { NUM: 50 } } } };
+                }
+                if (block.type === 'control_wait') {
+                    blockJson.inputs = { DURATION: { shadow: { type: "math_number", fields: { NUM: 1 } } } };
+                }
+                if (block.type === 'control_repeat') {
+                    blockJson.inputs = { TIMES: { shadow: { type: "math_number", fields: { NUM: 10 } } } };
+                }
+                if (block.type === 'led_set_color') {
+                     // Color field is usually a field, not input. 
+                     // But if we had value input for color, we'd shadow it.
+                }
+                
+                categories[cat].push(blockJson);
+            }
+        });
     }
 
-    return workspace;
+    // Add Static Sensors
+    if (!categories['Sensores']) categories['Sensores'] = [];
+    categories['Sensores'].push({ kind: "block", type: "sensor_distance" });
+    categories['Sensores'].push({ kind: "block", type: "sensor_tilt" });
+
+    // Build Final Structure
+    const contents = [];
+    
+    // Define Category Colors
+    const catColors = {
+        'Eventos': '#FFB300',
+        'Movimento': '#0091EA',
+        'Controle': '#FF6D00',
+        'Sensores': '#4CAF50',
+        'Som': '#E91E63',
+        'Outros': '#9E9E9E'
+    };
+
+    for (const [name, blocks] of Object.entries(categories)) {
+        if (blocks.length > 0) {
+            contents.push({
+                kind: "category",
+                name: name,
+                colour: catColors[name] || '#999',
+                contents: blocks
+            });
+        }
+    }
+
+    return {
+        kind: "categoryToolbox",
+        contents: contents
+    };
 }

@@ -35,9 +35,19 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Atenção: Esta aplicação precisa rodar em um servidor web (Localhost ou Vercel) para funcionar corretamente. O protocolo file:// não suporta módulos JavaScript.');
     }
 
-    // Setup Blockly
-    workspace = setupBlockly('blockly-div');
-    defineGenerators();
+    // Setup Blockly (Wait for config load inside setupBlockly if needed, but here we can just await it)
+    (async () => {
+        let blocksConfig = [];
+        try {
+            const res = await fetch('/api/blocks');
+            if(res.ok) blocksConfig = await res.json();
+        } catch(e) { console.warn("Failed to load blocks", e); }
+
+        setupBlockly('blockly-div', blocksConfig).then(ws => {
+            workspace = ws;
+            defineGenerators(blocksConfig);
+        });
+    })();
 
     // Event Listeners
     btnConnect.addEventListener('click', handleConnect);
@@ -360,108 +370,213 @@ function openSettingsModal() {
 </iframe>`;
     document.getElementById('embed-code').value = embedCode;
 
-    // Load Icon Settings
-    loadIconSettings();
+    // Load Block Settings
+    loadBlockSettings();
 
     document.getElementById('settings-modal').style.display = 'flex';
 }
 
-async function loadIconSettings() {
+async function loadBlockSettings() {
     const container = document.getElementById('settings-icons-container');
     if (!container) return;
     
-    container.innerHTML = '<p>Carregando ícones...</p>';
+    container.innerHTML = '<p>Carregando blocos...</p>';
 
     try {
-        const response = await fetch('/api/icons');
+        const response = await fetch('/api/blocks');
         if (!response.ok) throw new Error('Failed to load');
-        const icons = await response.json();
+        const blocks = await response.json();
         
-        container.innerHTML = '';
-        
-        // Define block types and labels
-        const blockTypes = [
-            { key: 'PLAY', label: 'Bloco Iniciar' },
-            { key: 'MOTOR', label: 'Bloco Motor' },
-            { key: 'WAIT', label: 'Bloco Esperar' },
-            { key: 'LOOP', label: 'Bloco Repetir' },
-            { key: 'LED', label: 'Bloco LED' },
-            { key: 'SOUND', label: 'Bloco Som' }
-        ];
+        container.innerHTML = `
+            <div style="margin-bottom: 15px;">
+                <button id="btn-add-block" class="btn btn-green" style="width: 100%; padding: 10px; border-radius: 8px;">+ Adicionar Novo Bloco</button>
+            </div>
+            <div id="blocks-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        `;
 
-        blockTypes.forEach(type => {
-            const currentUrl = icons[type.key] || '';
-            
+        const list = document.getElementById('blocks-list');
+        document.getElementById('btn-add-block').addEventListener('click', () => showAddBlockForm(blocks));
+
+        blocks.forEach((block, index) => {
             const div = document.createElement('div');
-            div.className = 'icon-setting-item';
-            div.style.marginBottom = '15px';
-            div.style.borderBottom = '1px solid #eee';
-            div.style.paddingBottom = '10px';
+            div.className = 'block-setting-item';
+            div.style.border = '1px solid #eee';
+            div.style.borderRadius = '8px';
+            div.style.padding = '10px';
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+            div.style.justifyContent = 'space-between';
+            div.style.background = '#f9f9f9';
             
             div.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <img src="${block.icon}" alt="${block.name}" style="width: 32px; height: 32px; object-fit: contain; background: #fff; border-radius: 4px; padding: 2px; border: 1px solid #ddd;">
                     <div>
-                        <strong style="display: block; margin-bottom: 5px;">${type.label}</strong>
-                        <small style="color: #666;">PNG ou SVG (Recomendado: 64x64)</small>
+                        <strong style="display: block; font-size: 0.95rem;">${block.name || 'Sem Nome'}</strong>
+                        <small style="color: #666; font-size: 0.8rem;">Tipo: ${getLabelForType(block.type)}</small>
                     </div>
-                    <div style="text-align: right;">
-                        <img src="${currentUrl}" alt="${type.key}" style="width: 32px; height: 32px; object-fit: contain; background: #eee; border-radius: 4px; padding: 4px; margin-bottom: 5px;" id="preview-${type.key}">
-                        <br>
-                        <input type="file" id="upload-${type.key}" accept=".png,.svg,.jpg" style="font-size: 0.8rem; max-width: 200px;">
-                    </div>
+                </div>
+                <div>
+                    <button class="btn btn-red btn-sm" style="padding: 5px 10px; font-size: 0.8rem;" data-index="${index}">🗑️</button>
                 </div>
             `;
             
-            container.appendChild(div);
-
-            // Add change listener
-            const input = div.querySelector(`#upload-${type.key}`);
-            input.addEventListener('change', (e) => handleIconUpload(e, type.key));
+            div.querySelector('.btn-red').addEventListener('click', () => deleteBlock(index, blocks));
+            list.appendChild(div);
         });
 
     } catch (e) {
         console.error(e);
-        container.innerHTML = '<p style="color: red;">Erro ao carregar configurações de ícones.</p>';
+        container.innerHTML = '<p style="color: red;">Erro ao carregar configurações de blocos.</p>';
     }
 }
 
-async function handleIconUpload(event, typeKey) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    // Show preview immediately
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        const base64 = e.target.result;
-        document.getElementById(`preview-${typeKey}`).src = base64;
-        
-        // Upload to server
-        try {
-            const response = await fetch('/api/save-icon', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    type: typeKey,
-                    image: base64,
-                    filename: file.name
-                })
-            });
-            
-            if (response.ok) {
-                // Success feedback
-                const label = document.querySelector(`label[for="upload-${typeKey}"]`); // Try to find label if exists, or just alert
-                alert(`Ícone ${typeKey} atualizado! Recarregue a página para ver a mudança na área de trabalho.`);
-            } else {
-                alert('Erro ao salvar ícone no servidor.');
-            }
-        } catch (err) {
-            console.error(err);
-            alert('Erro de conexão ao salvar ícone.');
-        }
+function getLabelForType(type) {
+    const labels = {
+        'event_start': 'Iniciar (Play)',
+        'motor_on': 'Motor Ligar',
+        'motor_spin': 'Motor Girar (CW/CCW)',
+        'motor_off': 'Motor Parar',
+        'control_wait': 'Esperar',
+        'control_repeat': 'Repetir (Loop)',
+        'led_set_color': 'LED',
+        'sound_play': 'Som'
     };
-    reader.readAsDataURL(file);
+    return labels[type] || type;
+}
+
+async function deleteBlock(index, blocks) {
+    if(!confirm('Tem certeza que deseja remover este bloco?')) return;
+    
+    blocks.splice(index, 1);
+    await saveBlocks(blocks);
+}
+
+async function saveBlocks(blocks) {
+    try {
+        const response = await fetch('/api/blocks', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(blocks)
+        });
+        if(response.ok) {
+            alert('Configuração salva! A página será recarregada.');
+            window.location.reload();
+        } else {
+            alert('Erro ao salvar blocos.');
+        }
+    } catch(e) {
+        console.error(e);
+        alert('Erro de conexão.');
+    }
+}
+
+function showAddBlockForm(currentBlocks) {
+    const container = document.getElementById('settings-icons-container');
+    container.innerHTML = `
+        <h3 style="margin-top: 0;">Novo Bloco</h3>
+        <div class="form-group">
+            <label>Nome do Bloco</label>
+            <input type="text" id="new-block-name" placeholder="Ex: Motor Rápido">
+        </div>
+        <div class="form-group">
+            <label>Função (Comportamento)</label>
+            <select id="new-block-type">
+                <option value="event_start">Iniciar (Play)</option>
+                <option value="motor_on">Ligar Motor</option>
+                <option value="motor_spin">Girar Motor (CW/CCW)</option>
+                <option value="motor_off">Parar Motor</option>
+                <option value="control_wait">Esperar</option>
+                <option value="control_repeat">Repetir (Loop)</option>
+                <option value="led_set_color">LED</option>
+                <option value="sound_play">Som</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Ícone (PNG/SVG)</label>
+            <input type="file" id="new-block-icon" accept=".png,.svg,.jpg,.jpeg">
+            <div id="preview-container" style="margin-top: 10px; display: none;">
+                <img id="new-block-preview" style="width: 48px; height: 48px; object-fit: contain; background: #eee; border-radius: 8px; padding: 4px;">
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button id="btn-cancel-add" class="btn btn-red" style="flex: 1;">Cancelar</button>
+            <button id="btn-save-new-block" class="btn btn-green" style="flex: 1;">Salvar</button>
+        </div>
+    `;
+
+    document.getElementById('btn-cancel-add').addEventListener('click', loadBlockSettings);
+    
+    const iconInput = document.getElementById('new-block-icon');
+    let uploadedIconPath = null;
+
+    iconInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+
+        // Preview
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const img = document.getElementById('new-block-preview');
+            img.src = ev.target.result;
+            img.style.display = 'block';
+            document.getElementById('preview-container').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+
+        // Upload immediately to get path
+        // Alternatively, wait for Save button. Let's wait for Save button logic?
+        // No, better upload now to verify. Or upload base64 directly?
+        // Let's reuse existing logic: read as base64 and send on save.
+    });
+
+    document.getElementById('btn-save-new-block').addEventListener('click', async () => {
+        const name = document.getElementById('new-block-name').value;
+        const type = document.getElementById('new-block-type').value;
+        const file = iconInput.files[0];
+
+        if (!name || !type || !file) {
+            alert('Preencha todos os campos!');
+            return;
+        }
+
+        // Upload Icon
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+            const base64 = ev.target.result;
+            
+            try {
+                const uploadRes = await fetch('/api/save-icon', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        type: 'custom', // Prefix
+                        filename: file.name,
+                        image: base64
+                    })
+                });
+                
+                if(!uploadRes.ok) throw new Error('Erro no upload');
+                const uploadData = await uploadRes.json();
+                
+                // Add to blocks list
+                const newBlock = {
+                    id: `custom_${Date.now()}`,
+                    type: type,
+                    name: name,
+                    icon: uploadData.path
+                };
+                
+                currentBlocks.push(newBlock);
+                await saveBlocks(currentBlocks);
+                
+            } catch(err) {
+                console.error(err);
+                alert('Erro ao salvar ícone.');
+            }
+        };
+        reader.readAsDataURL(file);
+    });
 }
 
 function closeSettingsModal() {
