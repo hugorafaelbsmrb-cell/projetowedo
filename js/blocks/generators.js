@@ -104,4 +104,12 @@ export function defineGenerators() {
         var code = `await driver.getTilt('${axis}')`;
         return [code, Blockly.JavaScript.ORDER_ATOMIC];
     };
+
+    // Sound
+    Blockly.JavaScript['sound_play'] = function(block) {
+        var sound = block.getFieldValue('SOUND');
+        var nextCode = Blockly.JavaScript.valueToCode(block, 'NEXT', Blockly.JavaScript.ORDER_ATOMIC) || '';
+        var code = `await driver.playSound('${sound}');\n${nextCode}`;
+        return [code, Blockly.JavaScript.ORDER_ATOMIC];
+    };
 }

@@ -220,94 +220,12 @@ export function defineCustomBlocks() {
                     ["Sucesso", "SUCCESS"], 
                     ["Alerta", "ALERT"]
                 ]), "SOUND");
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+            this.appendValueInput("NEXT")
+                .setCheck("WEDO");
+            this.setOutput(true, "WEDO");
             this.setColour(COLOUR_SOUND);
             this.setTooltip("Toca um som no computador");
             this.setInputsInline(true);
         }
     };
-
-    // --- Generators ---
-
-    const generator = Blockly.JavaScript;
-    
-    // Helper to register generator correctly for v10+ or older
-    function registerGenerator(blockName, generatorFunction) {
-        if (generator.forBlock) {
-            generator.forBlock[blockName] = generatorFunction;
-        } else {
-            generator[blockName] = generatorFunction;
-        }
-    }
-
-    registerGenerator('event_start', function(block) {
-        return '';
-    });
-
-    registerGenerator('motor_on', function(block) {
-        var speed = generator.valueToCode(block, 'SPEED', generator.ORDER_ATOMIC) || '100';
-        return `await driver.motorOn(${speed});\n`;
-    });
-
-    registerGenerator('motor_spin', function(block) {
-        var direction = block.getFieldValue('DIRECTION');
-        var speed = generator.valueToCode(block, 'SPEED', generator.ORDER_ATOMIC) || '100';
-        
-        if (direction === 'CCW') {
-             return `await driver.motorOn(-1 * (${speed}));\n`;
-        } else {
-             return `await driver.motorOn(${speed});\n`;
-        }
-    });
-
-    registerGenerator('motor_a_speed', function(block) {
-        var speed = generator.valueToCode(block, 'SPEED', generator.ORDER_ATOMIC) || '100';
-        return `await driver.motorA(${speed});\n`;
-    });
-
-    registerGenerator('motor_b_speed', function(block) {
-        var speed = generator.valueToCode(block, 'SPEED', generator.ORDER_ATOMIC) || '100';
-        return `await driver.motorB(${speed});\n`;
-    });
-
-    registerGenerator('motor_off', function(block) {
-        return `await driver.motorOff();\n`;
-    });
-
-    registerGenerator('led_set_color', function(block) {
-        var color = block.getFieldValue('COLOR');
-        return `await driver.setLED("${color}");\n`;
-    });
-
-    registerGenerator('control_repeat', function(block) {
-        var times = generator.valueToCode(block, 'TIMES', generator.ORDER_ATOMIC) || '0';
-        var branch = generator.statementToCode(block, 'DO');
-        return `
-        for (let i = 0; i < ${times}; i++) {
-            ${branch}
-        }
-        `;
-    });
-
-    registerGenerator('control_wait', function(block) {
-        var duration = generator.valueToCode(block, 'DURATION', generator.ORDER_ATOMIC) || '1';
-        return `await driver.wait(${duration} * 1000);\n`;
-    });
-
-    registerGenerator('sensor_distance', function(block) {
-        var code = 'await driver.getDistance()';
-        return [code, generator.ORDER_AWAIT || generator.ORDER_ATOMIC];
-    });
-
-    registerGenerator('sensor_tilt', function(block) {
-        var axis = block.getFieldValue('AXIS') || 'x';
-        var code = `await driver.getTilt('${axis}')`;
-        return [code, generator.ORDER_AWAIT || generator.ORDER_ATOMIC];
-    });
-
-    registerGenerator('sound_play', function(block) {
-        var sound = block.getFieldValue('SOUND');
-        return `await driver.playSound("${sound}");\n`;
-    });
 }
