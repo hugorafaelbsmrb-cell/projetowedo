@@ -16,6 +16,11 @@ export class WeDoDriver {
             "00001623-1212-efde-1523-785feabcd123"  // LPF2 Alternativo
         ];
         
+        // Lista de características para NÃO escrever (Perigosas)
+        this.BLACKLIST_UUIDS = [
+            "0000152b-1212-efde-1523-785feabcd123" // Desliga o Hub (Shutdown)
+        ];
+
         // Lista de características candidatas para envio (de todos os serviços)
         this.writeCandidates = [];
     }
@@ -59,9 +64,10 @@ export class WeDoDriver {
                     const characteristics = await service.getCharacteristics();
                     console.log(`   ↳ ${characteristics.length} características neste serviço.`);
 
-                    // Filtra as de escrita e adiciona à lista global
+                    // Filtra as de escrita e adiciona à lista global (exceto blacklisted)
                     const candidates = characteristics.filter(c => 
-                        c.properties.write || c.properties.writeWithoutResponse
+                        (c.properties.write || c.properties.writeWithoutResponse) &&
+                        !this.BLACKLIST_UUIDS.includes(c.uuid)
                     );
                     
                     candidates.forEach(c => {
@@ -79,7 +85,7 @@ export class WeDoDriver {
                 throw new Error("Nenhuma característica de escrita encontrada em NENHUM serviço!");
             }
 
-            console.log(`🔫 MODO TOTAL BROADCAST: ${this.writeCandidates.length} alvos prontos.`);
+            console.log(`🔫 MODO TOTAL BROADCAST: ${this.writeCandidates.length} alvos prontos (Ignorando 152b).`);
             this.connected = true;
             
             // Teste inicial
