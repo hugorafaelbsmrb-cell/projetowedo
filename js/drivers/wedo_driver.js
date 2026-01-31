@@ -294,15 +294,15 @@ export class WeDoDriver {
     async motorA(speed) {
         let s = Math.max(-100, Math.min(100, speed));
         let p = s < 0 ? 256 + s : s; 
-        // Payload ajustado: [Port, Cmd(01), Len/Type(02), Power]
-        await this.send([0x01, 0x01, 0x02, p]);
+        // Revertido para 0x01 (Padrão WeDo)
+        await this.send([0x01, 0x01, 0x01, p]);
     }
 
     async motorB(speed) {
         let s = Math.max(-100, Math.min(100, speed));
         let p = s < 0 ? 256 + s : s;
-        // Payload ajustado: [Port, Cmd(01), Len/Type(02), Power]
-        await this.send([0x02, 0x01, 0x02, p]);
+        // Revertido para 0x01 (Padrão WeDo)
+        await this.send([0x02, 0x01, 0x01, p]);
     }
 
     async motorOff() {
