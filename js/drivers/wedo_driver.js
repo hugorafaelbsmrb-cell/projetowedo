@@ -13,6 +13,8 @@ export class WeDoDriver {
         
         // UUID do Serviço Legacy (Padrão WeDo 2.0)
         this.SERVICE_UUID = "00001523-1212-efde-1523-785feabcd123";
+        // UUID da Característica de Comando (Motores/LED/Piezo)
+        this.COMMAND_UUID_PART = "1565"; 
     }
 
     /* ===============================
@@ -47,20 +49,31 @@ export class WeDoDriver {
             const service = await this.server.getPrimaryService(this.SERVICE_UUID);
             console.log("🛠️ Serviço encontrado:", service.uuid);
 
-            // 4. Buscar Característica de Escrita (Dinâmica)
-            // Não buscamos por UUID fixo para evitar erros de versão de firmware
+            // 4. Buscar Característica de Escrita (Prioridade 1565)
             const characteristics = await service.getCharacteristics();
             
-            // Procura qualquer característica que permita escrita
-            this.characteristic = characteristics.find(c => 
-                c.properties.write || c.properties.writeWithoutResponse
-            );
+            // Log para debug
+            console.log("📋 Características disponíveis:");
+            characteristics.forEach(c => console.log(`   - ${c.uuid} (Write: ${c.properties.write}, WriteNoResp: ${c.properties.writeWithoutResponse})`));
+
+            // Tenta encontrar a característica oficial de comandos (1565)
+            this.characteristic = characteristics.find(c => c.uuid.indexOf(this.COMMAND_UUID_PART) > -1);
+
+            if (this.characteristic) {
+                console.log("✅ Característica de COMANDO (1565) encontrada!");
+            } else {
+                console.warn("⚠️ Característica 1565 não encontrada. Tentando fallback genérico...");
+                // Fallback: Procura qualquer característica que permita escrita
+                this.characteristic = characteristics.find(c => 
+                    c.properties.write || c.properties.writeWithoutResponse
+                );
+            }
 
             if (!this.characteristic) {
                 throw new Error("Nenhuma característica de escrita encontrada no serviço.");
             }
 
-            console.log("✅ Característica de comando vinculada:", this.characteristic.uuid);
+            console.log("🔗 Característica vinculada para envio:", this.characteristic.uuid);
             
             this.connected = true;
             
