@@ -185,6 +185,48 @@ export class WeDoDriver {
     }
 
     /* ===============================
+       SOM (Browser)
+    =============================== */
+    async playSound(name) {
+        console.log(`🔊 Tocar som: ${name}`);
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+
+            if (name === "BEEP") {
+                osc.type = 'sine';
+                osc.frequency.value = 880;
+                osc.start();
+                osc.stop(ctx.currentTime + 0.2);
+            } else if (name === "ALERT") {
+                osc.type = 'triangle';
+                osc.frequency.value = 440;
+                osc.start();
+                osc.frequency.linearRampToValueAtTime(880, ctx.currentTime + 0.3);
+                osc.stop(ctx.currentTime + 0.3);
+            } else { // SUCCESS
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(440, ctx.currentTime);
+                osc.frequency.setValueAtTime(554, ctx.currentTime + 0.1); // C#
+                osc.frequency.setValueAtTime(659, ctx.currentTime + 0.2); // E
+                osc.start();
+                osc.stop(ctx.currentTime + 0.4);
+            }
+        } catch (e) {
+            console.error("Erro ao tocar som", e);
+        }
+    }
+
+    /* ===============================
        ENVIO MULTI-SERVIÇO (TOTAL BROADCAST)
     =============================== */
     async send(bytes) {
