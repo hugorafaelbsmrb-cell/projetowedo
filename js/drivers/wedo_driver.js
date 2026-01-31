@@ -124,15 +124,45 @@ export class WeDoDriver {
         const data = event.target.value;
         const bytes = new Uint8Array(data.buffer);
         
-        // Log para Debug dos Sensores (Apenas se mudar muito para não floodar)
-        // console.log(`📡 DADOS DE ${uuid}:`, bytes);
+        // Debug (Throttle logs if needed)
+        // console.log(`📡 DADOS ${uuid}:`, bytes);
 
-        // Tenta decodificar Sensor de Distância (Geralmente bytes flutuantes ou inteiros simples)
-        // WeDo 2.0 Distância costuma ser um float ou int em bytes específicos
-        if (bytes.length >= 2) {
-            // Exemplo simples: assumindo que o byte[1] ou byte[2] é a distância
-            // Isso é experimental. Precisamos ver o log real.
-            this.sensors.distance = bytes[1]; 
+        // Heurística para WeDo 2.0 (Tentativa de identificar pelo formato)
+        
+        // Caso 1: 1 Byte (Geralmente Distância 0-10 ou Botão 0/1)
+        if (bytes.length === 1) {
+            const val = bytes[0];
+            
+            // Distância (WeDo Motion Sensor retorna 0-10)
+            // Se o valor flutua entre 0 e 10, assumimos que é distância
+            this.sensors.distance = val;
+
+            // Botão (Geralmente 0 solto, 1 pressionado)
+            // Difícil distinguir de distância 0 ou 1, mas salvamos
+            this.sensors.button = val; 
+        }
+        
+        // Caso 2: 2 Bytes (Geralmente Tilt X, Y)
+        else if (bytes.length === 2) {
+            // Converter para Signed Int8 (pois inclinação pode ser negativa)
+            const view = new DataView(data.buffer);
+            const x = view.getInt8(0);
+            const y = view.getInt8(1);
+            
+            this.sensors.tilt = { x, y };
+        }
+        
+        // Caso 3: 4 Bytes ou mais (Floats LPF2)
+        else if (bytes.length >= 4) {
+            // LPF2 às vezes manda floats (32-bit)
+            // Tentar ler como float
+            const view = new DataView(data.buffer);
+            try {
+                const f = view.getFloat32(0, true); // Little Endian
+                if (!isNaN(f) && f >= 0 && f <= 10) {
+                     this.sensors.distance = Math.round(f);
+                }
+            } catch(e) {}
         }
     }
 
@@ -191,9 +221,9 @@ export class WeDoDriver {
         return this.sensors.distance; 
     }
     
-    async getTilt() { 
-        // Mock por enquanto, retornando 0 ou implementando depois
-        return 0; 
+    async getTilt(axis = 'x') { 
+        if (axis === 'y') return this.sensors.tilt.y;
+        return this.sensors.tilt.x; 
     }
 
     /* ===============================

@@ -1,11 +1,19 @@
 export function defineCustomBlocks() {
     
-    // --- Colors ---
-    const COLOUR_EVENT = "#FFD700"; // Amarelo
-    const COLOUR_CONTROL = "#FF8C00"; // Laranja
-    const COLOUR_MOTION = "#0066CC"; // Azul
-    const COLOUR_SENSOR = "#4CAF50"; // Verde
-    const COLOUR_SOUND = "#9C27B0"; // Roxo (Mantido ou ajustado se precisar)
+    // --- Colors (WeDo 2.0 Palette) ---
+    const COLOUR_EVENT = "#FFD700";   // Yellow (Flow)
+    const COLOUR_CONTROL = "#FF8C00"; // Orange (Control)
+    const COLOUR_MOTION = "#4CAF50";  // Green (Motor) - Note: User image shows Green for motors
+    const COLOUR_SENSOR = "#E91E63";  // Pink/Red (Sensors/Display)
+    const COLOUR_SOUND = "#E91E63";   // Pink (Sound)
+
+    // --- Icons (Base64 SVGs) ---
+    const ICON_PLAY = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwOTY4OCI+PHBhdGggZD0iTTggNXYxNGwxMS03eiIvPjwvc3ZnPg=="; // Green Play
+    const ICON_MOTOR = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0iTTEyIDZ2MTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0iTTE2IDhsLTQgNC00LTQiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+";
+    const ICON_WAIT = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiI+PHBhdGggZD0iTTYgMnY2bDYgNi02IDZ2NmgyNHYtNmwtNi02IDYtNlYySDZ6bTEwIDE0LjVMMTIgMTMgOCAxNi41VjIwMThoLTR2LTJsNC00LTQtNHYtMmg4djJsLTQgNCA0IDR2MmgtNHYtMi41eiIvPjwvc3ZnPg==";
+    const ICON_LOOP = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiI+PHBhdGggZD0iTTEyIDRWMS43TDkgNS40bDMgMy43VjZoM2M3LjIgMCA3LjIgMTAgMCAxMEg4di0yaDRjNC44IDAgNC44LTggMC04aC0zem0tMyA1SDV2MTJoMTJ2LTJIN1Y5eiIvPjwvc3ZnPg==";
+    const ICON_LED = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiI+PHBhdGggZD0iTTkgMjFoNnYtMi41SDlWMjF6bTMtMTlhNyA3IDAgMCAwLTcgN2MwIDIuMTQgMS4wNiAzLjkzIDIuNDcgNS4xOGwxLjUzIDEuMTZWMTdoNnYtMi42NWwxLjUzLTEuMTZBNyA3IDAgMCAwIDEyIDJ6bTMuNSA3YzAgMS4zLS41IDIuNS0xLjIgMy41bC0xLjEgMS4yVjE1aC00LjR2LTEuM2wtMS4xLTEuMkE1LjUgNS41IDAgMCAxIDEyIDRjMy4wNSAwIDUuNSAyLjQ1IDUuNSA1eiIvPjwvc3ZnPg==";
+    const ICON_SOUND = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiI+PHBhdGggZD0iTTEyIDN2MTAuNTVjLS41OS0uMzQtMS4yNy0uNTUtMi0uNTUtMi4yMSAwLTQgMS43OS00IDRzMS43OSA0IDQgNCA0LTEuNzkgNC00VjdoNHYtNGgtOHoiLz48L3N2Zz4=";
 
     // --- Blocks Definitions ---
 
@@ -13,30 +21,25 @@ export function defineCustomBlocks() {
     Blockly.Blocks['event_start'] = {
         init: function() {
             this.appendDummyInput()
-                .appendField(new Blockly.FieldImage(
-                    "https://www.gstatic.com/images/icons/material/system/2x/play_arrow_white_24dp.png",
-                    24, 24, "Play"
-                ))
-                .appendField("Quando Iniciar");
+                .appendField(new Blockly.FieldImage(ICON_PLAY, 40, 40, "Play"));
             this.setNextStatement(true, null);
             this.setColour(COLOUR_EVENT);
-            this.setTooltip("Começa o programa");
-            this.setHelpUrl("");
+            this.setTooltip("Começar");
+            this.setInputsInline(true);
         }
     };
 
-    // Motor: On
+    // Motor: On (Simpler)
     Blockly.Blocks['motor_on'] = {
         init: function() {
             this.appendDummyInput()
-                .appendField("Ligar Motor");
+                .appendField(new Blockly.FieldImage(ICON_MOTOR, 32, 32, "Motor"));
             this.appendValueInput("SPEED")
-                .setCheck("Number")
-                .appendField("Velocidade");
+                .setCheck("Number");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLOUR_MOTION);
-            this.setTooltip("Liga o motor na velocidade definida");
+            this.setTooltip("Ligar Motor");
             this.setInputsInline(true);
         }
     };
@@ -45,58 +48,47 @@ export function defineCustomBlocks() {
     Blockly.Blocks['motor_spin'] = {
         init: function() {
             this.appendDummyInput()
-                .appendField("Girar Motor")
+                .appendField(new Blockly.FieldImage(ICON_MOTOR, 32, 32, "Motor"));
+            this.appendDummyInput()
                 .appendField(new Blockly.FieldDropdown([
-                    ["Horário ↻", "CW"],
-                    ["Anti-horário ↺", "CCW"]
+                    ["↻", "CW"],
+                    ["↺", "CCW"]
                 ]), "DIRECTION");
             this.appendValueInput("SPEED")
-                .setCheck("Number")
-                .appendField("Velocidade");
+                .setCheck("Number");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLOUR_MOTION);
-            this.setTooltip("Gira o motor na direção e velocidade especificadas");
+            this.setTooltip("Girar Motor");
             this.setInputsInline(true);
         }
     };
 
-    // Motor A: Set Speed (Specific Port)
+    // Motor A/B (Specific Ports)
     Blockly.Blocks['motor_a_speed'] = {
         init: function() {
             this.appendDummyInput()
-                .appendField("Motor A")
-                .appendField(new Blockly.FieldImage(
-                    "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIvPjxwYXRoIGQ9Ik0xMiA2djEyIi8+PHBhdGggZD0iTTE2IDhsLTQgNC00LTQiLz48L3N2Zz4=",
-                    20, 20, "Motor"
-                ));
+                .appendField("A")
+                .appendField(new Blockly.FieldImage(ICON_MOTOR, 24, 24, "Motor A"));
             this.appendValueInput("SPEED")
-                .setCheck("Number")
-                .appendField("Velocidade");
+                .setCheck("Number");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLOUR_MOTION);
-            this.setTooltip("Liga o Motor A (Porta 1) na velocidade definida");
             this.setInputsInline(true);
         }
     };
 
-    // Motor B: Set Speed (Specific Port)
     Blockly.Blocks['motor_b_speed'] = {
         init: function() {
             this.appendDummyInput()
-                .appendField("Motor B")
-                .appendField(new Blockly.FieldImage(
-                    "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIvPjxwYXRoIGQ9Ik0xMiA2djEyIi8+PHBhdGggZD0iTTE2IDhsLTQgNC00LTQiLz48L3N2Zz4=",
-                    20, 20, "Motor"
-                ));
+                .appendField("B")
+                .appendField(new Blockly.FieldImage(ICON_MOTOR, 24, 24, "Motor B"));
             this.appendValueInput("SPEED")
-                .setCheck("Number")
-                .appendField("Velocidade");
+                .setCheck("Number");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLOUR_MOTION);
-            this.setTooltip("Liga o Motor B (Porta 2) na velocidade definida");
             this.setInputsInline(true);
         }
     };
@@ -105,11 +97,12 @@ export function defineCustomBlocks() {
     Blockly.Blocks['motor_off'] = {
         init: function() {
             this.appendDummyInput()
-                .appendField("Desligar Motor");
+                .appendField(new Blockly.FieldImage(ICON_MOTOR, 32, 32, "Motor"))
+                .appendField("🛑");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLOUR_MOTION);
-            this.setTooltip("Para o motor");
+            this.setTooltip("Parar Motor");
             this.setInputsInline(true);
         }
     };
@@ -117,7 +110,6 @@ export function defineCustomBlocks() {
     // LED: Set Color
     Blockly.Blocks['led_set_color'] = {
         init: function() {
-            // Palette WeDo 2.0 (Off, Pink, Purple, Blue, Cyan, Teal, Green, Yellow, Orange, Red, White)
             const wedoColors = [
                 "#000000", "#ffc0cb", "#800080", "#0000ff", 
                 "#00ffff", "#008080", "#00ff00", "#ffff00", 
@@ -130,29 +122,16 @@ export function defineCustomBlocks() {
                 field.setColours(wedoColors);
                 field.setColumns(4);
             } else {
-                // Fallback robusto se FieldColour não existir
-                field = new Blockly.FieldDropdown([
-                    ["⚫ Desligado", "#000000"],
-                    ["🌸 Rosa", "#ffc0cb"],
-                    ["🟣 Roxo", "#800080"],
-                    ["🔵 Azul", "#0000ff"],
-                    ["💠 Ciano", "#00ffff"],
-                    ["🌊 Verde-água", "#008080"],
-                    ["🟢 Verde", "#00ff00"],
-                    ["🟡 Amarelo", "#ffff00"],
-                    ["🟠 Laranja", "#ffa500"],
-                    ["🔴 Vermelho", "#ff0000"],
-                    ["⚪ Branco", "#ffffff"]
-                ]);
+                field = new Blockly.FieldDropdown([["Red", "#ff0000"]]);
             }
 
             this.appendDummyInput()
-                .appendField("Definir LED")
+                .appendField(new Blockly.FieldImage(ICON_LED, 32, 32, "LED"))
                 .appendField(field, "COLOR");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour(COLOUR_MOTION);
-            this.setTooltip("Muda a cor do LED do dispositivo");
+            this.setColour(COLOUR_MOTION); // Using Motion color as per user preference (or distinct?) WeDo uses same color for output.
+            this.setTooltip("Cor LED");
             this.setInputsInline(true);
         }
     };
@@ -160,44 +139,59 @@ export function defineCustomBlocks() {
     // Control: Wait
     Blockly.Blocks['control_wait'] = {
         init: function() {
-            this.appendValueInput("DURATION")
-                .setCheck("Number")
-                .appendField("Esperar");
             this.appendDummyInput()
-                .appendField("segundos");
+                .appendField(new Blockly.FieldImage(ICON_WAIT, 32, 32, "Wait"));
+            this.appendValueInput("DURATION")
+                .setCheck("Number");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLOUR_CONTROL);
-            this.setTooltip("Pausa a execução");
+            this.setTooltip("Esperar");
             this.setInputsInline(true);
         }
     };
 
-    // Control: Repeat (Loop) - Custom visual wrapper for standard loop
+    // Control: Repeat (Loop)
     Blockly.Blocks['control_repeat'] = {
         init: function() {
             this.appendDummyInput()
-                .appendField("Repetir");
+                .appendField(new Blockly.FieldImage(ICON_LOOP, 32, 32, "Loop"));
             this.appendValueInput("TIMES")
                 .setCheck("Number");
-            this.appendDummyInput()
-                .appendField("vezes");
             this.appendStatementInput("DO")
                 .setCheck(null);
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
             this.setColour(COLOUR_CONTROL);
-            this.setTooltip("Repete os blocos dentro");
+            this.setTooltip("Repetir");
             this.setInputsInline(true);
         }
     };
 
     // --- Sensors ---
-
-    // Sensor: Distance
+    // (Keeping them simple for now)
     Blockly.Blocks['sensor_distance'] = {
         init: function() {
             this.appendDummyInput()
+                .appendField("📏");
+            this.setOutput(true, "Number");
+            this.setColour(COLOUR_SENSOR);
+            this.setTooltip("Distância");
+            this.setInputsInline(true);
+        }
+    };
+    
+    Blockly.Blocks['sensor_tilt'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("📐");
+            this.setOutput(true, "Number");
+            this.setColour(COLOUR_SENSOR);
+            this.setTooltip("Inclinação");
+            this.setInputsInline(true);
+        }
+    };
+}
                 .appendField("Distância (cm)");
             this.setOutput(true, "Number");
             this.setColour(COLOUR_SENSOR);
@@ -210,10 +204,14 @@ export function defineCustomBlocks() {
     Blockly.Blocks['sensor_tilt'] = {
         init: function() {
             this.appendDummyInput()
-                .appendField("Inclinação/Botão");
+                .appendField("📐")
+                .appendField(new Blockly.FieldDropdown([
+                    ["Inclinação X", "x"],
+                    ["Inclinação Y", "y"]
+                ]), "AXIS");
             this.setOutput(true, "Number");
             this.setColour(COLOUR_SENSOR);
-            this.setTooltip("Lê status de inclinação ou botão (0 ou 1)");
+            this.setTooltip("Lê a inclinação (Eixo X ou Y)");
             this.setInputsInline(true);
         }
     };
