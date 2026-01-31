@@ -98,21 +98,6 @@ export class WeDoDriver {
                 }
             }
 
-            // 3. Priorização de Característica (CRÍTICO)
-            // O WeDo 2.0 suporta dois protocolos: Legacy (1565) e LPF2 (1624/outros).
-            // Nossos comandos [0x01, 0x01, ...] são formato Legacy.
-            // Se enviarmos isso para a porta LPF2, o Hub ignora ou trava.
-            // Portanto, se acharmos a 1565, DEVEMOS usar APENAS ela.
-            
-            const legacyChar = this.writeCandidates.find(c => c.uuid.includes("1565"));
-            
-            if (legacyChar) {
-                console.log("🎯 Característica Legacy (1565) encontrada! Usando APENAS ela para estabilidade.");
-                this.writeCandidates = [legacyChar];
-            } else {
-                console.warn("⚠️ Característica 1565 não encontrada. Tentando broadcast nos candidatos restantes (pode falhar)...");
-            }
-
             if (this.writeCandidates.length === 0) {
                 throw new Error("Nenhuma característica de escrita encontrada!");
             }
