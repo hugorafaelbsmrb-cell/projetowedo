@@ -1,19 +1,19 @@
 // js/drivers/wedo_driver.js
-// LEGO WeDo 2.0 – Driver Nativo Otimizado (Final v2)
-// Motivo: Ajuste para forçar WriteWithResponse e garantir envio de comandos.
+// LEGO WeDo 2.0 – Driver Nativo "Broadcast Mode"
+// Motivo: Envia comandos para TODAS as características de escrita disponíveis para garantir funcionamento.
 
 export class WeDoDriver {
     constructor() {
         this.device = null;
         this.server = null;
-        this.characteristic = null;
         this.connected = false;
         this.queue = Promise.resolve();
         
         // UUID do Serviço Legacy (Padrão WeDo 2.0)
         this.SERVICE_UUID = "00001523-1212-efde-1523-785feabcd123";
-        // UUID da Característica de Comando (Motores/LED/Piezo)
-        this.COMMAND_UUID_PART = "1565"; 
+        
+        // Lista de características candidatas para envio
+        this.writeCandidates = [];
     }
 
     /* ===============================
@@ -25,12 +25,12 @@ export class WeDoDriver {
         }
 
         console.log("🔍 Iniciando busca por WeDo 2.0...");
+        this.writeCandidates = []; // Limpa lista anterior
 
         try {
-            // 1. Solicitar dispositivo (Permissivo)
             this.device = await navigator.bluetooth.requestDevice({
                 acceptAllDevices: true,
-                optionalServices: [this.SERVICE_UUID] // Essencial para permissão de acesso
+                optionalServices: [this.SERVICE_UUID]
             });
 
             console.log("📱 Dispositivo selecionado:", this.device.name);
@@ -40,43 +40,34 @@ export class WeDoDriver {
                 console.log("❌ Desconectado pelo dispositivo");
             });
 
-            // 2. Conectar ao Servidor GATT
             this.server = await this.device.gatt.connect();
             console.log("🔌 Conectado ao GATT");
 
-            // 3. Obter Serviço Principal
             const service = await this.server.getPrimaryService(this.SERVICE_UUID);
             console.log("🛠️ Serviço encontrado:", service.uuid);
 
-            // 4. Buscar Característica de Escrita (Prioridade 1565)
+            // Mapeamento de TODAS as características
             const characteristics = await service.getCharacteristics();
-            
-            console.log("📋 Características disponíveis:");
-            characteristics.forEach(c => console.log(`   - ${c.uuid} (Write: ${c.properties.write}, WriteNoResp: ${c.properties.writeWithoutResponse})`));
+            console.log(`📋 Total de características encontradas: ${characteristics.length}`);
 
-            // Tenta encontrar a característica oficial de comandos (1565)
-            this.characteristic = characteristics.find(c => c.uuid.indexOf(this.COMMAND_UUID_PART) > -1);
+            // Filtra todas que aceitam escrita
+            this.writeCandidates = characteristics.filter(c => 
+                c.properties.write || c.properties.writeWithoutResponse
+            );
 
-            if (this.characteristic) {
-                console.log("✅ Característica de COMANDO (1565) encontrada!");
-            } else {
-                console.warn("⚠️ Característica 1565 não encontrada. Tentando fallback genérico...");
-                // Fallback: Procura qualquer característica que permita escrita
-                this.characteristic = characteristics.find(c => 
-                    c.properties.write || c.properties.writeWithoutResponse
-                );
+            if (this.writeCandidates.length === 0) {
+                throw new Error("Nenhuma característica de escrita encontrada!");
             }
 
-            if (!this.characteristic) {
-                throw new Error("Nenhuma característica de escrita encontrada no serviço.");
-            }
+            console.log("🔫 MODO BROADCAST ATIVADO: Comandos serão enviados para:");
+            this.writeCandidates.forEach(c => {
+                console.log(`   - UUID: ${c.uuid} (Write: ${c.properties.write}, NoResp: ${c.properties.writeWithoutResponse})`);
+            });
 
-            console.log("🔗 Característica vinculada para envio:", this.characteristic.uuid);
-            
             this.connected = true;
             
-            // Sequência de Inicialização (Stop All + Blink)
-            await this.motorOff();
+            // Teste inicial: Piscar LED em todas as portas
+            console.log("🧪 Iniciando teste de injeção em todas as portas...");
             await this.setLED("green");
             
             return true;
@@ -89,32 +80,39 @@ export class WeDoDriver {
     }
 
     /* ===============================
-       FILA DE COMANDOS (Anti-conflito)
+       ENVIO MULTI-PORTA (BROADCAST)
     =============================== */
     async send(bytes) {
-        if (!this.characteristic) return;
+        if (this.writeCandidates.length === 0) return;
 
-        // Enfileira comandos para evitar "GATT Operation in Progress"
         this.queue = this.queue.then(async () => {
-            try {
-                const data = new Uint8Array(bytes);
-                console.log("➡️ Enviando:", Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' '));
-                
-                // Prioriza WriteWithResponse para garantir entrega (WeDo Legacy prefere isso)
-                if (this.characteristic.properties.write) {
-                    await this.characteristic.writeValue(data);
-                } else if (this.characteristic.properties.writeWithoutResponse) {
-                    await this.characteristic.writeValueWithoutResponse(data);
-                } else {
-                    console.warn("⚠️ Característica não possui permissão de escrita clara.");
-                    await this.characteristic.writeValue(data); // Tenta mesmo assim
+            const data = new Uint8Array(bytes);
+            const hexData = Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' ');
+            
+            console.log(`➡️ Broadcast [${hexData}] para ${this.writeCandidates.length} alvos:`);
+
+            // Dispara para todas as características candidatas
+            for (const char of this.writeCandidates) {
+                try {
+                    // Tenta WriteWithResponse primeiro se disponível
+                    if (char.properties.write) {
+                        await char.writeValue(data);
+                        console.log(`   ✅ Enviado para ${char.uuid} (Com Resposta)`);
+                    } 
+                    // Se não, tenta WriteWithoutResponse
+                    else if (char.properties.writeWithoutResponse) {
+                        await char.writeValueWithoutResponse(data);
+                        console.log(`   ✅ Enviado para ${char.uuid} (Sem Resposta)`);
+                    }
+                    // Pequeno delay entre envios para não engasgar o BLE
+                    await new Promise(r => setTimeout(r, 20)); 
+                } catch (e) {
+                    console.warn(`   ⚠️ Falha em ${char.uuid}:`, e.message);
                 }
-                
-                // Delay necessário para o Hub processar
-                await new Promise(r => setTimeout(r, 60));
-            } catch (e) {
-                console.warn("🚨 Falha no envio:", e);
             }
+            
+            // Delay final de ciclo
+            await new Promise(r => setTimeout(r, 50));
         });
         
         return this.queue;
@@ -135,7 +133,6 @@ export class WeDoDriver {
     async wait(ms) { return new Promise(r => setTimeout(r, ms)); }
     async stopAll() { await this.motorOff(); }
     
-    // Liga ambos os motores
     async motorOn(speed) { 
         await this.motorA(speed); 
         await this.motorB(speed); 
@@ -147,16 +144,12 @@ export class WeDoDriver {
     /* ===============================
        MOTORES
     =============================== */
-    // Motor A = Porta 1 (0x01)
     async motorA(speed) {
         let s = Math.max(-100, Math.min(100, speed));
-        // Conversão Signed Int8 -> Uint8
         let p = s < 0 ? 256 + s : s; 
-        // Payload: [Port, Command, Mode, Power]
         await this.send([0x01, 0x01, 0x01, p]);
     }
 
-    // Motor B = Porta 2 (0x02)
     async motorB(speed) {
         let s = Math.max(-100, Math.min(100, speed));
         let p = s < 0 ? 256 + s : s;
@@ -164,7 +157,6 @@ export class WeDoDriver {
     }
 
     async motorOff() {
-        // Envia comando de parada explícito (Velocidade 0)
         await this.motorA(0);
         await this.motorB(0);
     }
@@ -174,28 +166,18 @@ export class WeDoDriver {
     =============================== */
     async setLED(color) {
         let index = 0;
-
         if (typeof color === 'number') {
             index = color;
         } else if (typeof color === 'string') {
             const hex = color.toLowerCase();
             const map = {
-                "off": 0, "#000000": 0,
-                "pink": 1, "#ffc0cb": 1,
-                "purple": 2, "#800080": 2,
-                "blue": 3, "#0000ff": 3,
-                "cyan": 4, "#00ffff": 4,
-                "teal": 5, "#008080": 5,
-                "green": 6, "#00ff00": 6,
-                "yellow": 7, "#ffff00": 7,
-                "orange": 8, "#ffa500": 8,
-                "red": 9, "#ff0000": 9,
-                "white": 10, "#ffffff": 10
+                "off": 0, "#000000": 0, "pink": 1, "#ffc0cb": 1, "purple": 2, "#800080": 2,
+                "blue": 3, "#0000ff": 3, "cyan": 4, "#00ffff": 4, "teal": 5, "#008080": 5,
+                "green": 6, "#00ff00": 6, "yellow": 7, "#ffff00": 7, "orange": 8, "#ffa500": 8,
+                "red": 9, "#ff0000": 9, "white": 10, "#ffffff": 10
             };
             index = map[hex] !== undefined ? map[hex] : 10;
         }
-
-        // Comando LED: [Port=0x06, Command=0x04, Mode=0x01, ColorIndex]
         await this.send([0x06, 0x04, 0x01, index]);
     }
 }
