@@ -102,6 +102,14 @@ export class WeDoDriver {
                 }
             }
 
+            // 3. Priorização Final (Se achou a Legacy 1565, usa só ela)
+            // O usuário confirmou que esta é a porta correta.
+            const legacyChar = this.writeCandidates.find(c => c.uuid.includes("1565"));
+            if (legacyChar) {
+                console.log("🏆 UUID VENCEDOR (Legacy 1565) encontrado! Isolando para estabilidade máxima.");
+                this.writeCandidates = [legacyChar];
+            }
+
             if (this.writeCandidates.length === 0) {
                 throw new Error("Nenhuma característica de escrita encontrada!");
             }
