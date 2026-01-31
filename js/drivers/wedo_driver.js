@@ -1,5 +1,5 @@
 // js/drivers/wedo_driver.js
-// LEGO WeDo 2.0 – LEGACY BLE (CORRETO)
+// LEGO WeDo 2.0 – Web Bluetooth LEGACY (VERSÃO DEFINITIVA)
 
 export class WeDoDriver {
     constructor() {
@@ -7,12 +7,10 @@ export class WeDoDriver {
         this.server = null;
         this.service = null;
         this.characteristic = null;
-        this.connected = false;
         this.queue = Promise.resolve();
+        this.connected = false;
 
-        // UUIDs LEGACY WeDo 2.0
         this.SERVICE_UUID = "00001523-1212-efde-1523-785feabcd123";
-        this.CHAR_UUID    = "00001565-1212-efde-1523-785feabcd123";
     }
 
     /* ===============================
@@ -30,23 +28,23 @@ export class WeDoDriver {
 
         this.server = await this.device.gatt.connect();
         this.service = await this.server.getPrimaryService(this.SERVICE_UUID);
-        this.characteristic = await this.service.getCharacteristic(this.CHAR_UUID);
+
+        // 🚨 NÃO buscar por UUID fixo
+        const characteristics = await this.service.getCharacteristics();
+
+        // Escolhe a característica de escrita
+        this.characteristic = characteristics.find(c =>
+            c.properties.write || c.properties.writeWithoutResponse
+        );
+
+        if (!this.characteristic) {
+            throw new Error("Nenhuma característica de escrita encontrada.");
+        }
 
         this.connected = true;
-        console.log("✅ WeDo 2.0 (Legacy) conectado");
+        console.log("✅ WeDo 2.0 conectado (Legacy)");
         
-        return true; // Retorno necessário para a interface
-    }
-
-    disconnect() {
-        if (this.device && this.device.gatt.connected) {
-            this.device.gatt.disconnect();
-        }
-        this.connected = false;
-    }
-
-    isConnected() {
-        return this.connected;
+        return true;
     }
 
     /* ===============================
@@ -55,10 +53,17 @@ export class WeDoDriver {
     async send(bytes) {
         this.queue = this.queue.then(async () => {
             const data = new Uint8Array(bytes);
-            console.log("➡️", data);
-            await this.characteristic.writeValue(data);
+            console.log("➡️ Enviando:", data);
+
+            if (this.characteristic.properties.writeWithoutResponse) {
+                await this.characteristic.writeValueWithoutResponse(data);
+            } else {
+                await this.characteristic.writeValue(data);
+            }
+
             await new Promise(r => setTimeout(r, 60));
         });
+
         return this.queue;
     }
 
@@ -66,7 +71,7 @@ export class WeDoDriver {
        MOTORES
     =============================== */
 
-    // Motor A → Porta 1
+    // Motor A – Porta 1
     async motorA(speed) {
         let s = Math.max(-100, Math.min(100, speed));
         let p = s < 0 ? 256 + s : s;
@@ -75,7 +80,7 @@ export class WeDoDriver {
         await this.send([0x01, 0x01, 0x01, p]);
     }
 
-    // Motor B → Porta 2
+    // Motor B – Porta 2
     async motorB(speed) {
         let s = Math.max(-100, Math.min(100, speed));
         let p = s < 0 ? 256 + s : s;
@@ -86,17 +91,6 @@ export class WeDoDriver {
     async motorOff() {
         await this.motorA(0);
         await this.motorB(0);
-    }
-
-    // Compatibilidade com a interface
-    async stopAll() {
-        await this.motorOff();
-    }
-
-    // Compatibilidade com blocos
-    async motorOn(speed) {
-        await this.motorA(speed);
-        await this.motorB(speed);
     }
 
     /* ===============================
@@ -126,17 +120,25 @@ export class WeDoDriver {
             colorIndex = input;
         }
 
-        // 0–10
+        // 0–10 (cores LEGO)
         await this.send([0x06, 0x04, 0x01, colorIndex]);
     }
 
     /* ===============================
-       UTILITÁRIOS
+       ADAPTADORES DE INTERFACE (Necessários para UI)
     =============================== */
-    async wait(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+    isConnected() { return this.connected; }
+    
+    disconnect() {
+        if (this.device && this.device.gatt.connected) {
+            this.device.gatt.disconnect();
+        }
+        this.connected = false;
     }
 
+    async wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+    async stopAll() { await this.motorOff(); }
+    async motorOn(speed) { await this.motorA(speed); await this.motorB(speed); }
     async getDistance() { return 0; }
     async getTilt() { return 0; }
 }
