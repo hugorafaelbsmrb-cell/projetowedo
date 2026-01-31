@@ -72,28 +72,16 @@ export class WeDoDriver {
                     const characteristics = await service.getCharacteristics();
                     
                     // A. Filtra WRITES (Motores/LED)
-                    // Filtra e prioriza APENAS os UUIDs confirmados pelo usuário (4f01 e 4f02)
                     const writers = characteristics.filter(c => {
-                        const uuid = c.uuid.toLowerCase();
-                        
-                        // Lista de UUIDs confirmados que funcionam
-                        const WHITELIST = [
-                            "00004f01-1212-efde-1523-785feabcd123", // Motor
-                            "00004f02-1212-efde-1523-785feabcd123"  // LED / Identificação
-                        ];
-
-                        return WHITELIST.includes(uuid);
+                        const isBlacklisted = this.BLACKLIST_UUIDS.some(b => c.uuid.toLowerCase() === b.toLowerCase());
+                        if (isBlacklisted) {
+                            console.warn(`⛔ BLOQUEADO UUID PERIGOSO (Shutdown): ${c.uuid}`);
+                            return false;
+                        }
+                        return c.properties.write || c.properties.writeWithoutResponse;
                     });
                     
-                    if (writers.length > 0) {
-                        console.log(`🎯 ENCONTRADO UUID CONFIRMADO! Usando apenas 4f01/4f02.`);
-                        // Se achou os oficiais, limpa qualquer "lixo" anterior e usa só eles
-                        // Mas como estamos num loop de serviços, vamos adicionar. 
-                        // Idealmente, se achou esses, nem precisa de outros.
-                        
-                        // Adiciona
-                        writers.forEach(c => this.writeCandidates.push(c));
-                    }
+                    writers.forEach(c => this.writeCandidates.push(c));
 
                     // B. Filtra NOTIFIES (Sensores)
                     const notifiers = characteristics.filter(c => c.properties.notify);
