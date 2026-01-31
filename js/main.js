@@ -138,6 +138,11 @@ async function handleRun() {
         updateStatus("Executando...");
         isRunning = true;
         
+        // Reinicia estado do driver (ex: limpa flag de parada)
+        if (currentDriver && currentDriver.reset) {
+            currentDriver.reset();
+        }
+        
         // Pass driver to the function
         const runFunction = new Function('driver', `return (async () => { ${code} })();`);
         await runFunction(currentDriver);

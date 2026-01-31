@@ -99,6 +99,10 @@ export class ArduinoDriver {
         return this.connected;
     }
 
+    reset() {
+        // Implementar se necessário reset de estado
+    }
+
     async sendCommand(command) {
         if (!this.connected || !this.writer) return;
         const data = command + '\n';

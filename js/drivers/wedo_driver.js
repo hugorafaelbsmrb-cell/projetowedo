@@ -8,6 +8,7 @@ export class WeDoDriver {
         this.server = null;
         this.connected = false;
         this.queue = Promise.resolve();
+        this.isStopped = false;
         
         // Lista de UUIDs de Serviços Possíveis (Legacy, LPF2, Nordic)
         this.TARGET_SERVICES = [
@@ -25,7 +26,7 @@ export class WeDoDriver {
         this.writeCandidates = [];
         this.notifyCandidates = []; // Para sensores
         
-        // Estado dos sensores
+        // Mapeamento de Sensores (Porta -> Tipo/Valor)
         this.sensors = {
             distance: 0,
             tilt: { x: 0, y: 0 }
