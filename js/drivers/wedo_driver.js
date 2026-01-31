@@ -209,7 +209,7 @@ export class WeDoDriver {
                 }
             }
             
-            await new Promise(r => setTimeout(r, 20));
+            await new Promise(r => setTimeout(r, 50));
         });
         
         return this.queue;
