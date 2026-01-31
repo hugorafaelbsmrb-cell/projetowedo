@@ -123,9 +123,28 @@ export function defineCustomBlocks() {
                 "#00ffff", "#008080", "#00ff00", "#ffff00", 
                 "#ffa500", "#ff0000", "#ffffff"
             ];
-            const field = new Blockly.FieldColour("#ff0000");
-            field.setColours(wedoColors);
-            field.setColumns(4);
+            
+            let field;
+            if (Blockly.FieldColour) {
+                field = new Blockly.FieldColour("#ff0000");
+                field.setColours(wedoColors);
+                field.setColumns(4);
+            } else {
+                // Fallback robusto se FieldColour não existir
+                field = new Blockly.FieldDropdown([
+                    ["⚫ Desligado", "#000000"],
+                    ["🌸 Rosa", "#ffc0cb"],
+                    ["🟣 Roxo", "#800080"],
+                    ["🔵 Azul", "#0000ff"],
+                    ["💠 Ciano", "#00ffff"],
+                    ["🌊 Verde-água", "#008080"],
+                    ["🟢 Verde", "#00ff00"],
+                    ["🟡 Amarelo", "#ffff00"],
+                    ["🟠 Laranja", "#ffa500"],
+                    ["🔴 Vermelho", "#ff0000"],
+                    ["⚪ Branco", "#ffffff"]
+                ]);
+            }
 
             this.appendDummyInput()
                 .appendField("Definir LED")
