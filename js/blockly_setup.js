@@ -56,7 +56,7 @@ export function setupBlockly(containerId) {
             {
                 "kind": "category",
                 "name": "Movimento",
-                "colour": "#2196F3", // Blue
+                "colour": "#0091EA", // Blue (Motor)
                 "contents": [
                     {
                         "kind": "block",

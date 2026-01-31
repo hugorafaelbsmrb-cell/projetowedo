@@ -1,19 +1,19 @@
 export function defineCustomBlocks() {
     
-    // --- Colors (WeDo 2.0 Palette - User Custom) ---
-    const COLOUR_MOTION = "#448AFF";  // Blue (Motion)
-    const COLOUR_CONTROL = "#FFD700"; // Yellow (Control)
-    const COLOUR_EVENT = "#FF9800";   // Orange (Events)
+    // --- Colors (WeDo 2.0 Palette - Refined) ---
+    const COLOUR_EVENT = "#FFB300";   // Amber (Events)
+    const COLOUR_MOTION = "#0091EA";  // Blue (Motors)
+    const COLOUR_CONTROL = "#FF6D00"; // Deep Orange (Control/Loops)
     const COLOUR_SENSOR = "#4CAF50";  // Green (Sensors)
-    const COLOUR_SOUND = "#E91E63";   // Pink (Sound - Optional)
+    const COLOUR_SOUND = "#E91E63";   // Pink (Sound)
 
-    // --- Icons (Base64 SVGs) ---
-    const ICON_PLAY = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwOTY4OCI+PHBhdGggZD0iTTggNXYxNGwxMS03eiIvPjwvc3ZnPg==";
-    const ICON_MOTOR = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0iTTEyIDZ2MTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0iTTE2IDhsLTQgNC00LTQiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+";
-    const ICON_WAIT = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiI+PHBhdGggZD0iTTYgMnY2bDYgNi02IDZ2NmgyNHYtNmwtNi02IDYtNlYySDZ6bTEwIDE0LjVMMTIgMTMgOCAxNi41VjIwMThoLTR2LTJsNC00LTQtNHYtMmg4djJsLTQgNCA0IDR2MmgtNHYtMi41eiIvPjwvc3ZnPg==";
-    const ICON_LOOP = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiI+PHBhdGggZD0iTTEyIDRWMS43TDkgNS40bDMgMy43VjZoM2M3LjIgMCA3LjIgMTAgMCAxMEg4di0yaDRjNC44IDAgNC44LTggMC04aC0zem0tMyA1SDV2MTJoMTJ2LTJIN1Y5eiIvPjwvc3ZnPg==";
-    const ICON_LED = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiI+PHBhdGggZD0iTTkgMjFoNnYtMi41SDlWMjF6bTMtMTlhNyA3IDAgMCAwLTcgN2MwIDIuMTQgMS4wNiAzLjkzIDIuNDcgNS4xOGwxLjUzIDEuMTZWMTdoNnYtMi42NWwxLjUzLTEuMTZBNyA3IDAgMCAwIDEyIDJ6bTMuNSA3YzAgMS4zLS41IDIuNS0xLjIgMy41bC0xLjEgMS4yVjE1aC00LjR2LTEuM2wtMS4xLTEuMkE1LjUgNS41IDAgMCAxIDEyIDRjMy4wNSAwIDUuNSAyLjQ1IDUuNSA1eiIvPjwvc3ZnPg==";
-    const ICON_SOUND = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiI+PHBhdGggZD0iTTEyIDN2MTAuNTVjLS41OS0uMzQtMS4yNy0uNTUtMi0uNTUtMi4yMSAwLTQgMS43OS00IDRzMS43OSA0IDQgNCA0LTEuNzkgNC00VjdoNHYtNGgtOHoiLz48L3N2Zz4=";
+    // --- Icons (Custom WeDo Style with Circular Background) ---
+    const ICON_PLAY = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+CiAgPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9InJnYmEoMCwwLDAsMC4xNSkiIC8+CiAgPHBhdGggZD0iTTggNXYxNGwxMSt3eiIgZmlsbD0iI2ZmZiIgdHJhbnNmb3JtPSJzY2FsZSgwLjcpIHRyYW5zbGF0ZSg1LDUpIiAvPgo8L3N2Zz4=';
+    const ICON_MOTOR = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9InJnYmEoMCwwLDAsMC4xNSkiIHN0cm9rZT0ibm9uZSIgLz4KICA8ZyB0cmFuc2Zvcm09InNjYWxlKDAuNykgdHJhbnNsYXRlKDUsNSkiPgogIDxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjgiLz48cGF0aCBkPSJNMTIgOHY4TTggMTJoOCIvPgogIDwvZz4KPC9zdmc+';
+    const ICON_WAIT = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9InJnYmEoMCwwLDAsMC4xNSkiIHN0cm9rZT0ibm9uZSIgLz4KICA8ZyB0cmFuc2Zvcm09InNjYWxlKDAuNykgdHJhbnNsYXRlKDUsNSkiPgogIDxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIi8+PHBvbHlsaW5lIHBvaW50cz0iMTIgNiAxMiAxMiAxNiAxNCIvPgogIDwvZz4KPC9zdmc+';
+    const ICON_LOOP = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9InJnYmEoMCwwLDAsMC4xNSkiIHN0cm9rZT0ibm9uZSIgLz4KICA8ZyB0cmFuc2Zvcm09InNjYWxlKDAuNykgdHJhbnNsYXRlKDUsNSkiPgogIDxwYXRoIGQ9Ik0xNyAxbDQgNC00IDQiLz48cGF0aCBkPSJNMyAxMVY5YTQgNCAwIDAgMSA0LTRoMTQiLz48cGF0aCBkPSJNNyAyM2wtNC00IDQtNCIvPjxwYXRoIGQ9Ik0yMSAxM3YyYTQgNCAwIDAgMS00IDRIMyIvPgogIDwvZz4KPC9zdmc+';
+    const ICON_LED = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9InJnYmEoMCwwLDAsMC4xNSkiIHN0cm9rZT0ibm9uZSIgLz4KICA8ZyB0cmFuc2Zvcm09InNjYWxlKDAuNykgdHJhbnNsYXRlKDUsNSkiPgogIDxwYXRoIGQ9Ik0xMiAydjRNMTIgMTh2NE00LjkzIDQuOTNsMi44MyAyLjgzTTE2LjI0IDE2LjI0bDIuODMgMi44M00yIDEyaDRNMTggMTJoNE00LjkzIDE5LjA3bDIuODMtMi44M00xNi4yNCA3Ljc2bDIuODMtMi44MyIvPgogIDwvZz4KPC9zdmc+';
+    const ICON_SOUND = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9InJnYmEoMCwwLDAsMC4xNSkiIHN0cm9rZT0ibm9uZSIgLz4KICA8ZyB0cmFuc2Zvcm09InNjYWxlKDAuNykgdHJhbnNsYXRlKDUsNSkiPgogIDxwb2x5Z29uIHBvaW50cz0iMTEgNSA2IDkgMiA5IDIgMTUgNiAxNSAxMSAxOSAxMSA1Ii8+PHBhdGggZD0iTTE5LjA3IDQuOTNhMTAgMTAgMCAwIDEgMCAxNC4xNE0xNS41NCA4LjQ2YTUgNSAwIDAgMSAwIDcuMDciLz4KICA8L2c+Cjwvc3ZnPg==';
 
     // --- Blocks Definitions ---
 
@@ -21,7 +21,7 @@ export function defineCustomBlocks() {
     Blockly.Blocks['event_start'] = {
         init: function() {
             this.appendDummyInput()
-                .appendField(new Blockly.FieldImage(ICON_PLAY, 40, 40, "Play"));
+                .appendField(new Blockly.FieldImage(ICON_PLAY, 32, 32, "Play"));
             this.appendValueInput("NEXT")
                 .setCheck("WEDO");
             this.setColour(COLOUR_EVENT);
@@ -137,7 +137,7 @@ export function defineCustomBlocks() {
             this.appendValueInput("NEXT")
                 .setCheck("WEDO");
             this.setOutput(true, "WEDO");
-            this.setColour(COLOUR_MOTION);
+            this.setColour(COLOUR_SENSOR); // Used Sensor color as per previous, but maybe Control? Keeping Sensor.
             this.setTooltip("Cor LED");
             this.setInputsInline(true);
         }
@@ -214,7 +214,7 @@ export function defineCustomBlocks() {
     Blockly.Blocks['sound_play'] = {
         init: function() {
             this.appendDummyInput()
-                .appendField("Tocar Som")
+                .appendField(new Blockly.FieldImage(ICON_SOUND, 32, 32, "Sound"))
                 .appendField(new Blockly.FieldDropdown([
                     ["Bip", "BEEP"], 
                     ["Sucesso", "SUCCESS"], 

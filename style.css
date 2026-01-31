@@ -297,111 +297,77 @@ select#hardware-type {
     border: 2px solid #eee;
     border-radius: 10px;
     font-family: 'Fredoka', sans-serif;
-    font-size: 1rem;
 }
 
-.form-group input:focus, .form-group select:focus {
-    border-color: var(--color-action);
-    outline: none;
+/* WeDo 2.0 Visual Refactoring (New Styles) */
+
+/* Block Paths - Shadow and Radius adjustments */
+.blocklyPath {
+    filter: drop-shadow(0px 4px 0px rgba(0,0,0,0.1));
+    stroke-width: 0.5px !important;
+    stroke: rgba(0,0,0,0.2) !important;
 }
 
-.modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 30px;
+.blocklyPathDark {
+    display: none; /* Hide default 3D bevels if any */
 }
 
-.btn-secondary {
-    background-color: #eee;
-    color: #555;
-    padding: 10px 20px;
-    border-radius: 20px;
+/* Input Fields (Pill Shape) */
+.blocklyEditableText > rect {
+    rx: 15px !important;
+    ry: 15px !important;
+    fill: #ffffff !important;
+    stroke: none !important;
+    fill-opacity: 1 !important;
+    height: 24px !important;
 }
 
-/* --- Responsive Design --- */
-@media (max-width: 1024px) {
-    .logo-area h1 {
-        font-size: 1.5rem;
-    }
-    
-    .btn-round {
-        width: 50px;
-        height: 50px;
-    }
-    
-    .btn svg {
-        width: 24px;
-        height: 24px;
-    }
-    
-    .blocklyToolboxDiv {
-        min-height: 100px;
-    }
-    
-    .blocklyTreeRow {
-        height: 40px !important;
-        padding: 8px 15px !important;
-        font-size: 14px !important;
-    }
+.blocklyEditableText > text {
+    fill: #333 !important;
+    font-weight: bold;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 14px !important;
+    transform: translateY(2px);
 }
 
-@media (max-width: 768px) {
-    :root {
-        --header-height: auto;
-    }
-    
-    .toolbar {
-        flex-direction: column;
-        padding: 15px;
-        gap: 15px;
-        height: auto;
-    }
-    
-    .logo-area {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .controls-area {
-        flex-direction: column;
-        width: 100%;
-        gap: 15px;
-    }
-    
-    .hardware-select {
-        width: 100%;
-        justify-content: space-between;
-    }
-    
-    select#hardware-type {
-        flex: 1;
-        width: auto;
-        font-size: 0.9rem;
-    }
-    
-    .execution-controls {
-        width: 100%;
-        justify-content: center;
-        gap: 20px;
-    }
-    
-    .file-controls, .system-controls {
-        margin-left: 0 !important;
-        border-left: none !important;
-        padding-left: 0 !important;
-        justify-content: center;
-    }
-    
-    .controls-area > div {
-        /* Wrapper for controls to potentially group them horizontally if needed, 
-           but column layout is safer for small screens */
-    }
-    
-    /* Adjust Modal for mobile */
-    .modal-content {
-        width: 90%;
-        margin: 20px;
-        padding: 20px;
-    }
+/* Dropdown Fields */
+.blocklyDropdownText {
+    fill: #fff !important;
+    font-weight: bold;
+}
+
+/* Icons */
+.blocklyIconGroup {
+    fill-opacity: 1 !important;
+}
+
+/* Workspace Background (Canvas) */
+.blocklySvg {
+    background-color: #f8f9fa !important;
+}
+
+/* Horizontal Toolbox Refinement (Overrides) */
+.blocklyToolboxDiv {
+    border-top: none !important;
+    background-color: transparent !important;
+    margin-bottom: 10px;
+}
+
+.blocklyTreeRow {
+    border-radius: 25px !important;
+    margin: 5px 10px !important;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+    background-color: #fff;
+}
+
+.blocklyTreeRow:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 rgba(0,0,0,0.1);
+}
+
+.blocklyTreeSelected {
+    background-color: #fff !important;
+    border: 2px solid var(--color-action) !important;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.1) !important;
+    transform: translateY(2px);
 }
