@@ -59,30 +59,43 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function checkAuth() {
+    // 1. Check LocalStorage (Static/Vercel Mode)
+    const localAuth = localStorage.getItem('auth_user');
+    if (localAuth) {
+        return true; // Authenticated
+    }
+
+    // 2. Check Backend Session (Legacy/Local Mode)
     try {
         const response = await fetch('/api/check-auth');
-        const data = await response.json();
-        if (!data.authenticated) {
-            window.location.href = '/login.html';
+        if (response.ok) {
+            const data = await response.json();
+            if (data.authenticated) {
+                localStorage.setItem('auth_user', JSON.stringify(data.user));
+                return true;
+            }
         }
     } catch (e) {
-        console.warn('Auth check failed', e);
-        // If backend fails, maybe we are static?
-        // But we want to enforce login if backend exists.
-        // For now, if fetch fails, assume no backend or error, maybe stay?
-        // Better to redirect if we want to enforce.
-        // Let's assume backend is required.
+        console.warn('Backend auth check failed (offline/static mode)');
     }
+
+    // If both failed, redirect
+    window.location.href = '/login.html';
+    return false;
 }
 
 async function handleLogout() {
+    // Clear LocalStorage
+    localStorage.removeItem('auth_user');
+    
+    // Try Backend Logout
     try {
         await fetch('/api/logout', { method: 'POST' });
-        window.location.href = '/login.html';
     } catch (e) {
-        console.error('Logout failed', e);
-        alert('Erro ao sair.');
+        console.log('Backend logout failed or ignored');
     }
+    
+    window.location.href = '/login.html';
 }
 
 function handleHardwareChange() {
@@ -241,13 +254,32 @@ function updateStatus(msg) {
 
 // Settings / Backend Integration
 async function loadConfig() {
-    try {
-        const response = await fetch('/api/config');
-        if (!response.ok) throw new Error('Failed to load config');
-        const config = await response.json();
-        applyConfig(config);
-    } catch (e) {
-        console.warn('Backend not available or config load failed. Using defaults.', e);
+    // 1. Check LocalStorage (Priority for Vercel/Static)
+    const localConfig = localStorage.getItem('appConfig');
+    let configLoaded = false;
+
+    if (localConfig) {
+        try {
+            applyConfig(JSON.parse(localConfig));
+            configLoaded = true;
+        } catch (e) {
+            console.error('Invalid local config', e);
+        }
+    }
+
+    // 2. Fetch from Backend/Static File (as fallback or initial seed)
+    if (!configLoaded) {
+        try {
+            const response = await fetch('/api/config');
+            if (response.ok) {
+                const config = await response.json();
+                applyConfig(config);
+                // Cache it so next time we have it
+                localStorage.setItem('appConfig', JSON.stringify(config));
+            }
+        } catch (e) {
+            console.warn('Backend not available or config load failed. Using defaults.', e);
+        }
     }
 }
 
@@ -316,6 +348,12 @@ async function saveSettings() {
         logoUrl
     };
     
+    // 1. Save to LocalStorage (Guaranteed persistence for Vercel/Static)
+    localStorage.setItem('appConfig', JSON.stringify(newConfig));
+    applyConfig(newConfig);
+    
+    // 2. Try Backend Save (Best effort for local dev)
+    let backendSaved = false;
     try {
         const response = await fetch('/api/config', {
             method: 'POST',
@@ -326,14 +364,17 @@ async function saveSettings() {
         });
         
         if (response.ok) {
-            applyConfig(newConfig);
-            closeSettingsModal();
-            alert('Configurações salvas com sucesso!');
-        } else {
-            alert('Erro ao salvar configurações.');
+            backendSaved = true;
         }
     } catch (e) {
-        console.error(e);
-        alert('Erro de conexão com o servidor.');
+        console.warn('Backend unreachable (offline/static mode)');
+    }
+
+    closeSettingsModal();
+    
+    if (backendSaved) {
+        alert('Configurações salvas no servidor e navegador!');
+    } else {
+        alert('Configurações salvas no navegador (Modo Static)!');
     }
 }

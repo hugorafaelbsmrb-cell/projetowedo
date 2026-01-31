@@ -108,16 +108,37 @@
     </div>
 
     <script>
-        // Load Config for Title
-        fetch('/api/config')
-            .then(res => res.json())
-            .then(config => {
-                if (config.appName) {
-                    document.title = `Login - ${config.appName}`;
-                    document.getElementById('app-title').textContent = config.appName;
-                }
-            })
-            .catch(err => console.log('Using default config'));
+        // Load Config for Title (Priority: LocalStorage -> API -> Default)
+        function loadConfig() {
+            const localConfig = localStorage.getItem('appConfig');
+            if (localConfig) {
+                const config = JSON.parse(localConfig);
+                applyConfig(config);
+            } else {
+                fetch('/api/config')
+                    .then(res => {
+                        if (!res.ok) throw new Error('API not available');
+                        return res.json();
+                    })
+                    .then(config => {
+                        applyConfig(config);
+                        // Cache it
+                        localStorage.setItem('appConfig', JSON.stringify(config));
+                    })
+                    .catch(err => {
+                        console.log('Using default config or offline mode');
+                    });
+            }
+        }
+
+        function applyConfig(config) {
+            if (config.appName) {
+                document.title = `Login - ${config.appName}`;
+                document.getElementById('app-title').textContent = config.appName;
+            }
+        }
+
+        loadConfig();
 
         // Handle Login
         document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -127,6 +148,15 @@
             const password = document.getElementById('password').value;
             const errorMsg = document.getElementById('error-msg');
             
+            // 1. Try Local/Static Login First (Vercel Compatibility)
+            // Hardcoded credential check for static deployment
+            if (username === 'admin' && password === '123') {
+                localStorage.setItem('auth_user', JSON.stringify({ username: 'admin' }));
+                window.location.href = '/';
+                return;
+            }
+
+            // 2. Try Backend API (Legacy/Local Server)
             try {
                 const response = await fetch('/api/login', {
                     method: 'POST',
@@ -134,29 +164,42 @@
                     body: JSON.stringify({ username, password })
                 });
                 
-                const data = await response.json();
-                
-                if (response.ok && data.success) {
-                    window.location.href = '/';
-                } else {
-                    errorMsg.textContent = data.error || 'Erro ao entrar';
-                    errorMsg.style.display = 'block';
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        localStorage.setItem('auth_user', JSON.stringify(data.user));
+                        window.location.href = '/';
+                        return;
+                    }
                 }
             } catch (error) {
-                console.error(error);
-                errorMsg.textContent = 'Erro de conexão';
-                errorMsg.style.display = 'block';
+                console.log('Backend login failed, relying on static check');
             }
+
+            // If we get here, login failed
+            errorMsg.textContent = 'Usuário ou senha inválidos';
+            errorMsg.style.display = 'block';
         });
         
         // Check if already logged in
-        fetch('/api/check-auth')
-            .then(res => res.json())
-            .then(data => {
-                if (data.authenticated) {
-                    window.location.href = '/';
-                }
-            });
+        const localAuth = localStorage.getItem('auth_user');
+        if (localAuth) {
+            window.location.href = '/';
+        } else {
+            // Optional: Check backend session
+            fetch('/api/check-auth')
+                .then(res => {
+                    if (res.ok) return res.json();
+                    throw new Error('No backend');
+                })
+                .then(data => {
+                    if (data.authenticated) {
+                        localStorage.setItem('auth_user', JSON.stringify(data.user));
+                        window.location.href = '/';
+                    }
+                })
+                .catch(() => {});
+        }
     </script>
 </body>
 </html>
