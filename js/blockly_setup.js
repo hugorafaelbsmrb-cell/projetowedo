@@ -1,8 +1,19 @@
 import { defineCustomBlocks } from './blocks/custom_blocks.js';
 
-export function setupBlockly(containerId) {
-    // Define custom blocks first
-    defineCustomBlocks();
+export async function setupBlockly(containerId) {
+    // Fetch icons config from server
+    let iconsConfig = {};
+    try {
+        const response = await fetch('/api/icons');
+        if (response.ok) {
+            iconsConfig = await response.json();
+        }
+    } catch (e) {
+        console.warn('Failed to load icons config, using defaults', e);
+    }
+
+    // Define custom blocks with loaded config
+    defineCustomBlocks(iconsConfig);
 
     const toolbox = {
         "kind": "categoryToolbox",

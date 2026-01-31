@@ -1,4 +1,4 @@
-export function defineCustomBlocks() {
+export function defineCustomBlocks(customIcons) {
     
     // --- Colors (WeDo 2.0 Palette - Refined) ---
     const COLOUR_EVENT = "#FFB300";   // Amber (Events)
@@ -7,19 +7,21 @@ export function defineCustomBlocks() {
     const COLOUR_SENSOR = "#4CAF50";  // Green (Sensors)
     const COLOUR_SOUND = "#E91E63";   // Pink (Sound)
 
-    // --- Configuration: Icons (Admin Area) ---
-    // Change these paths to point to your PNG files in 'assets/block_icons/'
-    // Default is .svg, but you can replace with .png if you upload PNG files.
+    // --- Configuration: Icons (Dynamic) ---
+    // Default fallback icons if not provided by config
     const ICON_PATH = 'assets/block_icons/';
     
-    const ICONS = {
-        PLAY: ICON_PATH + 'play.svg',   // Replace with 'play.png'
-        MOTOR: ICON_PATH + 'motor.svg', // Replace with 'motor.png'
-        WAIT: ICON_PATH + 'wait.svg',   // Replace with 'wait.png'
-        LOOP: ICON_PATH + 'loop.svg',   // ...
+    const DEFAULT_ICONS = {
+        PLAY: ICON_PATH + 'play.svg',
+        MOTOR: ICON_PATH + 'motor.svg',
+        WAIT: ICON_PATH + 'wait.svg',
+        LOOP: ICON_PATH + 'loop.svg',
         LED: ICON_PATH + 'led.svg',
         SOUND: ICON_PATH + 'sound.svg'
     };
+
+    // Merge provided icons with defaults
+    const ICONS = { ...DEFAULT_ICONS, ...(customIcons || {}) };
 
     // --- Blocks Definitions ---
 

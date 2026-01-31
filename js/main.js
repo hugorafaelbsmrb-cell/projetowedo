@@ -360,7 +360,108 @@ function openSettingsModal() {
 </iframe>`;
     document.getElementById('embed-code').value = embedCode;
 
+    // Load Icon Settings
+    loadIconSettings();
+
     document.getElementById('settings-modal').style.display = 'flex';
+}
+
+async function loadIconSettings() {
+    const container = document.getElementById('settings-icons-container');
+    if (!container) return;
+    
+    container.innerHTML = '<p>Carregando ícones...</p>';
+
+    try {
+        const response = await fetch('/api/icons');
+        if (!response.ok) throw new Error('Failed to load');
+        const icons = await response.json();
+        
+        container.innerHTML = '';
+        
+        // Define block types and labels
+        const blockTypes = [
+            { key: 'PLAY', label: 'Bloco Iniciar' },
+            { key: 'MOTOR', label: 'Bloco Motor' },
+            { key: 'WAIT', label: 'Bloco Esperar' },
+            { key: 'LOOP', label: 'Bloco Repetir' },
+            { key: 'LED', label: 'Bloco LED' },
+            { key: 'SOUND', label: 'Bloco Som' }
+        ];
+
+        blockTypes.forEach(type => {
+            const currentUrl = icons[type.key] || '';
+            
+            const div = document.createElement('div');
+            div.className = 'icon-setting-item';
+            div.style.marginBottom = '15px';
+            div.style.borderBottom = '1px solid #eee';
+            div.style.paddingBottom = '10px';
+            
+            div.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <strong style="display: block; margin-bottom: 5px;">${type.label}</strong>
+                        <small style="color: #666;">PNG ou SVG (Recomendado: 64x64)</small>
+                    </div>
+                    <div style="text-align: right;">
+                        <img src="${currentUrl}" alt="${type.key}" style="width: 32px; height: 32px; object-fit: contain; background: #eee; border-radius: 4px; padding: 4px; margin-bottom: 5px;" id="preview-${type.key}">
+                        <br>
+                        <input type="file" id="upload-${type.key}" accept=".png,.svg,.jpg" style="font-size: 0.8rem; max-width: 200px;">
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(div);
+
+            // Add change listener
+            const input = div.querySelector(`#upload-${type.key}`);
+            input.addEventListener('change', (e) => handleIconUpload(e, type.key));
+        });
+
+    } catch (e) {
+        console.error(e);
+        container.innerHTML = '<p style="color: red;">Erro ao carregar configurações de ícones.</p>';
+    }
+}
+
+async function handleIconUpload(event, typeKey) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        const base64 = e.target.result;
+        document.getElementById(`preview-${typeKey}`).src = base64;
+        
+        // Upload to server
+        try {
+            const response = await fetch('/api/save-icon', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    type: typeKey,
+                    image: base64,
+                    filename: file.name
+                })
+            });
+            
+            if (response.ok) {
+                // Success feedback
+                const label = document.querySelector(`label[for="upload-${typeKey}"]`); // Try to find label if exists, or just alert
+                alert(`Ícone ${typeKey} atualizado! Recarregue a página para ver a mudança na área de trabalho.`);
+            } else {
+                alert('Erro ao salvar ícone no servidor.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Erro de conexão ao salvar ícone.');
+        }
+    };
+    reader.readAsDataURL(file);
 }
 
 function closeSettingsModal() {

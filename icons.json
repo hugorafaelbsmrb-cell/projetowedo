@@ -1,0 +1,8 @@
+{
+  "PLAY": "assets/block_icons/play.svg",
+  "MOTOR": "assets/block_icons/motor.svg",
+  "WAIT": "assets/block_icons/wait.svg",
+  "LOOP": "assets/block_icons/loop.svg",
+  "LED": "assets/block_icons/led.svg",
+  "SOUND": "assets/block_icons/sound.svg"
+}

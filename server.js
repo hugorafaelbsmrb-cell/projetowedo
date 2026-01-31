@@ -97,6 +97,72 @@ app.post('/api/config', isAuthenticated, (req, res) => {
     });
 });
 
+// Get Icons Config (Public)
+app.get('/api/icons', (req, res) => {
+    fs.readFile(ICONS_FILE, 'utf8', (err, data) => {
+        if (err) {
+            // Return default if file doesn't exist yet
+            return res.json({
+                PLAY: 'assets/block_icons/play.svg',
+                MOTOR: 'assets/block_icons/motor.svg',
+                WAIT: 'assets/block_icons/wait.svg',
+                LOOP: 'assets/block_icons/loop.svg',
+                LED: 'assets/block_icons/led.svg',
+                SOUND: 'assets/block_icons/sound.svg'
+            });
+        }
+        res.json(JSON.parse(data));
+    });
+});
+
+// Upload Icon (Protected)
+app.post('/api/save-icon', isAuthenticated, (req, res) => {
+    const { type, image, filename } = req.body; // image is base64 string
+    
+    if (!type || !image) {
+        return res.status(400).json({ error: 'Type and image are required' });
+    }
+
+    // Decode base64
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, 'base64');
+    
+    // Generate filename
+    const ext = filename ? path.extname(filename) : '.png';
+    const newFilename = `${type.toLowerCase()}_${Date.now()}${ext}`;
+    const relativePath = `assets/block_icons/${newFilename}`;
+    const absolutePath = path.join(__dirname, relativePath);
+
+    // Save file
+    fs.writeFile(absolutePath, buffer, (err) => {
+        if (err) {
+            console.error('Error saving file:', err);
+            return res.status(500).json({ error: 'Failed to save image' });
+        }
+
+        // Update icons.json
+        fs.readFile(ICONS_FILE, 'utf8', (err, data) => {
+            let icons = {};
+            if (!err) {
+                try {
+                    icons = JSON.parse(data);
+                } catch (e) {
+                    icons = {};
+                }
+            }
+
+            icons[type] = relativePath;
+
+            fs.writeFile(ICONS_FILE, JSON.stringify(icons, null, 2), (err) => {
+                if (err) {
+                    return res.status(500).json({ error: 'Failed to update config' });
+                }
+                res.json({ success: true, path: relativePath });
+            });
+        });
+    });
+});
+
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
