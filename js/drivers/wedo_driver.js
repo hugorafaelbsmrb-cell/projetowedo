@@ -72,12 +72,28 @@ export class WeDoDriver {
                     const characteristics = await service.getCharacteristics();
                     
                     // A. Filtra WRITES (Motores/LED)
-                    const writers = characteristics.filter(c => 
-                        (c.properties.write || c.properties.writeWithoutResponse) &&
-                        !this.BLACKLIST_UUIDS.includes(c.uuid)
-                    );
+                    // Filtra e prioriza APENAS os UUIDs confirmados pelo usuário (4f01 e 4f02)
+                    const writers = characteristics.filter(c => {
+                        const uuid = c.uuid.toLowerCase();
+                        
+                        // Lista de UUIDs confirmados que funcionam
+                        const WHITELIST = [
+                            "00004f01-1212-efde-1523-785feabcd123", // Motor
+                            "00004f02-1212-efde-1523-785feabcd123"  // LED / Identificação
+                        ];
+
+                        return WHITELIST.includes(uuid);
+                    });
                     
-                    writers.forEach(c => this.writeCandidates.push(c));
+                    if (writers.length > 0) {
+                        console.log(`🎯 ENCONTRADO UUID CONFIRMADO! Usando apenas 4f01/4f02.`);
+                        // Se achou os oficiais, limpa qualquer "lixo" anterior e usa só eles
+                        // Mas como estamos num loop de serviços, vamos adicionar. 
+                        // Idealmente, se achou esses, nem precisa de outros.
+                        
+                        // Adiciona
+                        writers.forEach(c => this.writeCandidates.push(c));
+                    }
 
                     // B. Filtra NOTIFIES (Sensores)
                     const notifiers = characteristics.filter(c => c.properties.notify);
