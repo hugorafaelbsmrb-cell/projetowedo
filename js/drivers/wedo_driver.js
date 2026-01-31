@@ -163,10 +163,28 @@ export class WeDoDriver {
         this.connected = false;
     }
 
+    // 6) HANDLER DE NOTIFICAÇÕES (SENSORES)
     handleNotification(event) {
-        // Placeholder para processamento de dados de sensores
-        // const value = event.target.value;
-        // console.log("Notificação recebida:", value);
+        const value = event.target.value;
+        const data = new Uint8Array(value.buffer);
+        // console.log("WeDo Notify:", data);
+
+        // Protocolo de Sensor WeDo 2.0 (vheun/wedo2)
+        // [PortID, SensorType, Data...]
+        
+        // Exemplo Tilt: [Port, 0x22 (Tilt), X, Y]
+        // Exemplo Distance: [Port, 0x23 (Distance), DistLow, DistHigh]
+
+        const portId = data[0]; // Port ID geralmente no byte 0 ou 1 dependendo do formato da notificação
+        
+        // Detectar tipo de sensor pelo ID da Porta ou Byte de Tipo
+        // Simplificação: Assumir que Porta 1 e 2 são as portas externas.
+        
+        // TODO: Implementar parser robusto baseado na lib vheun/wedo2
+        // Por enquanto, apenas logar para debug
+        if (data.length > 2) {
+             console.log(`WeDo Sensor Data (Port ${portId}):`, data);
+        }
     }
 
     async disconnect() {
@@ -235,7 +253,6 @@ export class WeDoDriver {
         if (s > 100) s = 100;
         if (s < -100) s = -100;
 
-        // Converter para complemento de 2 (Uint8) para valores negativos
         let powerByte = s;
         if (powerByte < 0) powerByte = 256 + powerByte;
 
@@ -243,13 +260,11 @@ export class WeDoDriver {
         
         if (this.isLegacy) {
             // Protocolo WeDo 2.0 Legacy (Characteristic 1565)
-            // Estrutura CORRETA e TESTADA para WeDo 2.0 Original:
-            // [PortID, CommandID=1, Mode=2, Power]
-            // Mode 2 (0x02) é crucial para definir potência direta sem interpolação
+            // Baseado em vheun/wedo2: [Port, 0x01, 0x02, Power]
             await this.sendCommand([0x01, 0x01, 0x02, powerByte]);
         } else {
             // Protocolo LPF2 (Characteristic 1624)
-            // [0x06, 0x00, 0x81, PORT, 0x11, 0x51, POWER]
+            // Motor na Porta 1
             await this.sendCommand([0x06, 0x00, 0x81, 0x01, 0x11, 0x51, powerByte]);
         }
     }
@@ -270,6 +285,7 @@ export class WeDoDriver {
             await this.sendCommand([0x02, 0x01, 0x02, powerByte]);
         } else {
             // Protocolo LPF2 (Characteristic 1624)
+            // Motor na Porta 2
             await this.sendCommand([0x06, 0x00, 0x81, 0x02, 0x11, 0x51, powerByte]);
         }
     }
@@ -299,42 +315,29 @@ export class WeDoDriver {
 
     // 3) LED
     async setLED(colorHex) {
-        // Mapeamento de Cores LPF2
-        // 0:Off, 1:Pink, 2:Purple, 3:Blue, 4:Sky, 5:Teal, 6:Green, 7:Yellow, 8:Orange, 9:Red, 10:White
-        const colors = {
-            "#000000": 0, // Off
-            "#ffc0cb": 1, // Pink
-            "#800080": 2, // Purple
-            "#0000ff": 3, // Blue
-            "#87ceeb": 4, // Sky
-            "#008080": 5, // Teal
-            "#00ff00": 6, // Green
-            "#ffff00": 7, // Yellow
-            "#ffa500": 8, // Orange
-            "#ff0000": 9, // Red
-            "#ffffff": 10 // White
+        // Mapeamento de cores baseado em vheun/wedo2
+        const colorMap = {
+            "#000000": 0, // BLACK
+            "#ff0000": 9, // RED
+            "#00ff00": 6, // GREEN
+            "#0000ff": 3, // BLUE
+            "#ffff00": 7, // YELLOW
+            "#ff00ff": 1, // PINK (WeDo Pink)
+            "#00ffff": 4, // CYAN
+            "#ffffff": 10,// WHITE
+            "#ffa500": 8  // ORANGE
         };
 
-        let index = 3; // Default Blue
-        if (colorHex && typeof colorHex === 'string') {
-             const normalized = colorHex.toLowerCase();
-             if (colors.hasOwnProperty(normalized)) {
-                 index = colors[normalized];
-             }
-        }
-        
+        const index = colorMap[colorHex.toLowerCase()] || 0;
         console.log(`WeDo: Set LED ${colorHex} (Index ${index})`);
 
         if (this.isLegacy) {
-            // Protocolo WeDo 2.0 Legacy (Characteristic 1565)
-            // LED is Port 0x06. Command 0x04 (Set Color RGB?) or similar.
-            // Padrão WeDo 2.0 para LED: Port 6, Mode 0, Command Set Output
-            // [0x06, 0x04, 0x01, index]
+            // Protocolo WeDo 2.0 Legacy
+            // Baseado em vheun/wedo2: [Port=0x06, Cmd=0x04, Mode=0x01, Index]
             await this.sendCommand([0x06, 0x04, 0x01, index]);
         } else {
-            // Enviar comando via LPF2.
-            // Usando estrutura padrão Output Command para Porta 6 (LED)
-            // [0x06, 0x00, 0x81, 0x06, 0x11, 0x51, COLOR_INDEX]
+            // Protocolo LPF2
+            // [0x06, 0x00, 0x81, Port=0x06, 0x11, 0x51, Index]
             await this.sendCommand([0x06, 0x00, 0x81, 0x06, 0x11, 0x51, index]);
         }
     }
