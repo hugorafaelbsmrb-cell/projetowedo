@@ -3,12 +3,12 @@ export function defineCustomBlocks() {
     // --- Colors (WeDo 2.0 Palette) ---
     const COLOUR_EVENT = "#FFD700";   // Yellow (Flow)
     const COLOUR_CONTROL = "#FF8C00"; // Orange (Control)
-    const COLOUR_MOTION = "#4CAF50";  // Green (Motor) - Note: User image shows Green for motors
+    const COLOUR_MOTION = "#4CAF50";  // Green (Motor)
     const COLOUR_SENSOR = "#E91E63";  // Pink/Red (Sensors/Display)
     const COLOUR_SOUND = "#E91E63";   // Pink (Sound)
 
     // --- Icons (Base64 SVGs) ---
-    const ICON_PLAY = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwOTY4OCI+PHBhdGggZD0iTTggNXYxNGwxMS03eiIvPjwvc3ZnPg=="; // Green Play
+    const ICON_PLAY = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwOTY4OCI+PHBhdGggZD0iTTggNXYxNGwxMS03eiIvPjwvc3ZnPg==";
     const ICON_MOTOR = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0iTTEyIDZ2MTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0iTTE2IDhsLTQgNC00LTQiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+";
     const ICON_WAIT = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiI+PHBhdGggZD0iTTYgMnY2bDYgNi02IDZ2NmgyNHYtNmwtNi02IDYtNlYySDZ6bTEwIDE0LjVMMTIgMTMgOCAxNi41VjIwMThoLTR2LTJsNC00LTQtNHYtMmg4djJsLTQgNCA0IDR2MmgtNHYtMi41eiIvPjwvc3ZnPg==";
     const ICON_LOOP = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiI+PHBhdGggZD0iTTEyIDRWMS43TDkgNS40bDMgMy43VjZoM2M3LjIgMCA3LjIgMTAgMCAxMEg4di0yaDRjNC44IDAgNC44LTggMC04aC0zem0tMyA1SDV2MTJoMTJ2LTJIN1Y5eiIvPjwvc3ZnPg==";
@@ -130,7 +130,7 @@ export function defineCustomBlocks() {
                 .appendField(field, "COLOR");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour(COLOUR_MOTION); // Using Motion color as per user preference (or distinct?) WeDo uses same color for output.
+            this.setColour(COLOUR_MOTION);
             this.setTooltip("Cor LED");
             this.setInputsInline(true);
         }
@@ -169,6 +169,7 @@ export function defineCustomBlocks() {
     };
 
     // --- Sensors ---
+
     // Sensor: Distance
     Blockly.Blocks['sensor_distance'] = {
         init: function() {
@@ -182,25 +183,6 @@ export function defineCustomBlocks() {
         }
     };
     
-    Blockly.Blocks['sensor_tilt'] = {
-        init: function() {
-            this.appendDummyInput()
-                .appendField("📐");
-            this.setOutput(true, "Number");
-            this.setColour(COLOUR_SENSOR);
-            this.setTooltip("Inclinação");
-            this.setInputsInline(true);
-        }
-    };
-}
-                .appendField("Distância (cm)");
-            this.setOutput(true, "Number");
-            this.setColour(COLOUR_SENSOR);
-            this.setTooltip("Lê a distância em cm");
-            this.setInputsInline(true);
-        }
-    };
-
     // Sensor: Tilt
     Blockly.Blocks['sensor_tilt'] = {
         init: function() {
@@ -251,7 +233,6 @@ export function defineCustomBlocks() {
     }
 
     registerGenerator('event_start', function(block) {
-        // The start block is just an entry point
         return '';
     });
 
@@ -311,7 +292,8 @@ export function defineCustomBlocks() {
     });
 
     registerGenerator('sensor_tilt', function(block) {
-        var code = 'await driver.getTilt()';
+        var axis = block.getFieldValue('AXIS') || 'x';
+        var code = `await driver.getTilt('${axis}')`;
         return [code, generator.ORDER_AWAIT || generator.ORDER_ATOMIC];
     });
 
