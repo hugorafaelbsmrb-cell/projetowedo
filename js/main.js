@@ -150,8 +150,12 @@ async function handleRun() {
         updateStatus("Execução finalizada.");
         isRunning = false;
     } catch (e) {
-        console.error(e);
-        updateStatus("Erro na execução: " + e.message);
+        if (e.message === "Execução interrompida") {
+            updateStatus("Parado.");
+        } else {
+            console.error(e);
+            updateStatus("Erro na execução: " + e.message);
+        }
         isRunning = false;
     }
 }

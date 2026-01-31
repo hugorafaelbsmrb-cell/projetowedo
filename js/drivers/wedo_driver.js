@@ -266,6 +266,10 @@ export class WeDoDriver {
     =============================== */
     isConnected() { return this.connected; }
     
+    reset() {
+        this.isStopped = false;
+    }
+
     disconnect() {
         if (this.device && this.device.gatt.connected) {
             this.device.gatt.disconnect();
