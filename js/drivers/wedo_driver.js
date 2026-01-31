@@ -1,43 +1,41 @@
 // js/drivers/wedo_driver.js
-// Driver LEGO WeDo 2.0 – Web Bluetooth + LPF2 (Versão Substituída conforme Solicitado)
+// LEGO WeDo 2.0 – LEGACY BLE (CORRETO)
 
 export class WeDoDriver {
     constructor() {
         this.device = null;
         this.server = null;
+        this.service = null;
         this.characteristic = null;
         this.connected = false;
-        this.commandQueue = Promise.resolve();
+        this.queue = Promise.resolve();
 
-        // UUIDs oficiais LEGO
-        this.LPF2_SERVICE_UUID = "00001623-1212-efde-1523-785feabcd123";
-        this.LPF2_COMMAND_UUID = "00001624-1212-efde-1523-785feabcd123";
+        // UUIDs LEGACY WeDo 2.0
+        this.SERVICE_UUID = "00001523-1212-efde-1523-785feabcd123";
+        this.CHAR_UUID    = "00001565-1212-efde-1523-785feabcd123";
     }
 
     /* ===============================
        CONEXÃO
     =============================== */
-    async connect() { 
-        if (!navigator.bluetooth) { 
-            throw new Error("Web Bluetooth não suportado."); 
-        } 
-    
-        this.device = await navigator.bluetooth.requestDevice({ 
-            acceptAllDevices: true, 
-            optionalServices: [this.LPF2_SERVICE_UUID] 
-        }); 
-    
-        this.server = await this.device.gatt.connect(); 
-        const service = await this.server.getPrimaryService(this.LPF2_SERVICE_UUID); 
-        this.characteristic = await service.getCharacteristic(this.LPF2_COMMAND_UUID); 
-    
-        this.connected = true; 
-        console.log("✅ WeDo 2.0 conectado"); 
-    
-        await this.initMotor(1); 
-        await this.initMotor(2);
+    async connect() {
+        if (!navigator.bluetooth) {
+            throw new Error("Web Bluetooth não suportado.");
+        }
+
+        this.device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: [this.SERVICE_UUID]
+        });
+
+        this.server = await this.device.gatt.connect();
+        this.service = await this.server.getPrimaryService(this.SERVICE_UUID);
+        this.characteristic = await this.service.getCharacteristic(this.CHAR_UUID);
+
+        this.connected = true;
+        console.log("✅ WeDo 2.0 (Legacy) conectado");
         
-        return true;
+        return true; // Retorno necessário para a interface
     }
 
     disconnect() {
@@ -52,84 +50,53 @@ export class WeDoDriver {
     }
 
     /* ===============================
-       FILA DE COMANDOS BLE
+       FILA DE COMANDOS
     =============================== */
-    async sendCommand(bytes) {
-        if (!this.characteristic) return;
-
-        this.commandQueue = this.commandQueue.then(async () => {
+    async send(bytes) {
+        this.queue = this.queue.then(async () => {
             const data = new Uint8Array(bytes);
-            console.log("➡️ Enviando:", data);
-            await this.characteristic.writeValueWithoutResponse(data);
-            await new Promise(r => setTimeout(r, 40));
+            console.log("➡️", data);
+            await this.characteristic.writeValue(data);
+            await new Promise(r => setTimeout(r, 60));
         });
-
-        return this.commandQueue;
+        return this.queue;
     }
 
     /* ===============================
-       INICIALIZA MOTOR (OBRIGATÓRIO)
+       MOTORES
     =============================== */
-    async initMotor(port) {
-        // Port Mode Setup: Power mode (0)
-        await this.sendCommand([
-            0x07,   // Length
-            0x00,   // Hub ID
-            0x41,   // Port Mode Setup
-            port,   // Porta
-            0x00,   // Mode = Power
-            0x01    // Dataset count
-        ]);
-    }
 
-    /* ===============================
-       MOTOR A (PORTA 1)
-    =============================== */
+    // Motor A → Porta 1
     async motorA(speed) {
-        await this.setMotor(1, speed);
+        let s = Math.max(-100, Math.min(100, speed));
+        let p = s < 0 ? 256 + s : s;
+
+        // [Port, Command, Mode, Power]
+        await this.send([0x01, 0x01, 0x01, p]);
     }
 
-    /* ===============================
-       MOTOR B (PORTA 2)
-    =============================== */
+    // Motor B → Porta 2
     async motorB(speed) {
-        await this.setMotor(2, speed);
+        let s = Math.max(-100, Math.min(100, speed));
+        let p = s < 0 ? 256 + s : s;
+
+        await this.send([0x02, 0x01, 0x01, p]);
     }
 
-    // Compatibilidade com blocos genéricos
-    async motorOn(speed) {
-        await this.motorA(speed);
-        await this.motorB(speed);
-    }
-
-    /* ===============================
-       CONTROLE DE MOTOR (LPF2 REAL)
-    =============================== */
-    async setMotor(port, speed) {
-        let s = Math.max(-100, Math.min(100, parseInt(speed)));
-        let power = s < 0 ? 256 + s : s;
-
-        await this.sendCommand([
-            0x08,   // Length
-            0x00,   // Hub ID
-            0x81,   // Port Output Command
-            port,   // Porta
-            0x11,   // Write Direct Mode Data
-            0x00,   // Mode = Power
-            power   // Potência
-        ]);
-    }
-
-    /* ===============================
-       PARAR TODOS OS MOTORES
-    =============================== */
     async motorOff() {
         await this.motorA(0);
         await this.motorB(0);
     }
 
+    // Compatibilidade com a interface
     async stopAll() {
         await this.motorOff();
+    }
+
+    // Compatibilidade com blocos
+    async motorOn(speed) {
+        await this.motorA(speed);
+        await this.motorB(speed);
     }
 
     /* ===============================
@@ -159,33 +126,17 @@ export class WeDoDriver {
             colorIndex = input;
         }
 
-        // 0–10 (cores LEGO)
-        await this.sendCommand([
-            0x08,
-            0x00,
-            0x81,
-            0x06,   // Porta do LED
-            0x11,
-            0x00,
-            colorIndex
-        ]);
+        // 0–10
+        await this.send([0x06, 0x04, 0x01, colorIndex]);
     }
 
     /* ===============================
-       UTILITÁRIOS (Compatibilidade)
+       UTILITÁRIOS
     =============================== */
     async wait(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    async getDistance() {
-        // Placeholder: Retorna 0 para evitar erros no console se o bloco for usado
-        // A implementação completa exigiria notificações BLE
-        return 0;
-    }
-
-    async getTilt() {
-        // Placeholder
-        return 0;
-    }
+    async getDistance() { return 0; }
+    async getTilt() { return 0; }
 }
