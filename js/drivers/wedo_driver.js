@@ -236,6 +236,10 @@ export class WeDoDriver {
                 } catch (e) {
                     console.log(`      ❌ Falha em ${char.uuid}:`, e);
                 }
+
+                // Delay de 5 segundos para Debug Visual
+                console.log("   ⏳ Aguardando 5s...");
+                await new Promise(r => setTimeout(r, 5000));
             }
             
             await new Promise(r => setTimeout(r, 50));
