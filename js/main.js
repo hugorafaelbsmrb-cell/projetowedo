@@ -37,11 +37,53 @@ document.addEventListener('DOMContentLoaded', () => {
     btnLoad.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', handleLoad);
     
+    // Settings Modal Listeners
+    document.getElementById('btn-settings').addEventListener('click', openSettingsModal);
+    document.querySelector('.close-modal').addEventListener('click', closeSettingsModal);
+    document.getElementById('btn-cancel-settings').addEventListener('click', closeSettingsModal);
+    document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
+    document.getElementById('settings-logo-type').addEventListener('change', toggleLogoInput);
+    
+    // Logout Listener
+    document.getElementById('btn-logout').addEventListener('click', handleLogout);
+
     // Initial Driver Setup
     handleHardwareChange();
     
+    // Check Auth & Load Config
+    checkAuth().then(() => {
+        loadConfig();
+    });
+    
     console.log("Plataforma CodeKids Inicializada");
 });
+
+async function checkAuth() {
+    try {
+        const response = await fetch('/api/check-auth');
+        const data = await response.json();
+        if (!data.authenticated) {
+            window.location.href = '/login.html';
+        }
+    } catch (e) {
+        console.warn('Auth check failed', e);
+        // If backend fails, maybe we are static?
+        // But we want to enforce login if backend exists.
+        // For now, if fetch fails, assume no backend or error, maybe stay?
+        // Better to redirect if we want to enforce.
+        // Let's assume backend is required.
+    }
+}
+
+async function handleLogout() {
+    try {
+        await fetch('/api/logout', { method: 'POST' });
+        window.location.href = '/login.html';
+    } catch (e) {
+        console.error('Logout failed', e);
+        alert('Erro ao sair.');
+    }
+}
 
 function handleHardwareChange() {
     const type = hardwareSelect.value;

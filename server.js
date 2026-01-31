@@ -3,16 +3,74 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const session = require('express-session');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const CONFIG_FILE = path.join(__dirname, 'config.json');
+const USERS_FILE = path.join(__dirname, 'users.json');
 
 app.use(cors());
 app.use(bodyParser.json());
+app.use(session({
+    secret: 'wedo-secret-key-123',
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false } // Set to true if using HTTPS
+}));
+
+// Initialize users file if not exists
+if (!fs.existsSync(USERS_FILE)) {
+    const defaultUsers = [{ username: 'admin', password: '123' }]; // Default user
+    fs.writeFileSync(USERS_FILE, JSON.stringify(defaultUsers, null, 2));
+}
+
+// Middleware to check authentication
+function isAuthenticated(req, res, next) {
+    if (req.session.user) {
+        next();
+    } else {
+        res.status(401).json({ error: 'Unauthorized' });
+    }
+}
+
 app.use(express.static(__dirname));
 
-// Get Config
+// Login
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    
+    fs.readFile(USERS_FILE, 'utf8', (err, data) => {
+        if (err) return res.status(500).json({ error: 'Server error' });
+        
+        const users = JSON.parse(data);
+        const user = users.find(u => u.username === username && u.password === password);
+        
+        if (user) {
+            req.session.user = { username: user.username };
+            res.json({ success: true, user: req.session.user });
+        } else {
+            res.status(401).json({ error: 'Credenciais inválidas' });
+        }
+    });
+});
+
+// Logout
+app.post('/api/logout', (req, res) => {
+    req.session.destroy();
+    res.json({ success: true });
+});
+
+// Check Auth
+app.get('/api/check-auth', (req, res) => {
+    if (req.session.user) {
+        res.json({ authenticated: true, user: req.session.user });
+    } else {
+        res.json({ authenticated: false });
+    }
+});
+
+// Get Config (Public)
 app.get('/api/config', (req, res) => {
     fs.readFile(CONFIG_FILE, 'utf8', (err, data) => {
         if (err) {
@@ -22,8 +80,8 @@ app.get('/api/config', (req, res) => {
     });
 });
 
-// Update Config
-app.post('/api/config', (req, res) => {
+// Update Config (Protected)
+app.post('/api/config', isAuthenticated, (req, res) => {
     const newConfig = req.body;
     
     // Validate (basic)

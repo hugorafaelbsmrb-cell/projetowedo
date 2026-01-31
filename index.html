@@ -23,7 +23,8 @@
         <!-- Header / Toolbar -->
         <header class="toolbar">
             <div class="logo-area">
-                <h1>CodeKids</h1>
+                <h1 id="app-logo-text">CodeKids</h1>
+                <img id="app-logo-img" src="" alt="Logo" style="display: none; height: 50px;">
             </div>
             
             <div class="controls-area">
@@ -55,6 +56,15 @@
                         <i data-lucide="folder-open"></i>
                     </button>
                     <input type="file" id="file-input" accept=".xml" style="display: none;">
+                </div>
+
+                <div class="system-controls" style="margin-left: 20px; display: flex; gap: 10px; border-left: 2px solid #ddd; padding-left: 20px;">
+                    <button id="btn-settings" class="btn btn-round btn-blue" title="Configurações" style="width: 50px; height: 50px; background-color: #607D8B;">
+                        <i data-lucide="settings"></i>
+                    </button>
+                    <button id="btn-logout" class="btn btn-round btn-red" title="Sair" style="width: 50px; height: 50px;">
+                        <i data-lucide="log-out"></i>
+                    </button>
                 </div>
             </div>
         </header>
