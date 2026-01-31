@@ -1,4 +1,5 @@
 import { setupBlockly } from './blockly_setup.js';
+import { defineGenerators } from './blocks/generators.js';
 import { ArduinoDriver } from './drivers/arduino_driver.js';
 import { WeDoDriver } from './drivers/wedo_driver.js';
 import { AudioManager } from './audio_manager.js';
@@ -36,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Setup Blockly
     workspace = setupBlockly('blockly-div');
+    defineGenerators();
 
     // Event Listeners
     btnConnect.addEventListener('click', handleConnect);

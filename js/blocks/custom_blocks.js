@@ -22,7 +22,8 @@ export function defineCustomBlocks() {
         init: function() {
             this.appendDummyInput()
                 .appendField(new Blockly.FieldImage(ICON_PLAY, 40, 40, "Play"));
-            this.setNextStatement(true, null);
+            this.appendValueInput("NEXT")
+                .setCheck("WEDO");
             this.setColour(COLOUR_EVENT);
             this.setTooltip("Começar");
             this.setInputsInline(true);
@@ -36,8 +37,9 @@ export function defineCustomBlocks() {
                 .appendField(new Blockly.FieldImage(ICON_MOTOR, 32, 32, "Motor"));
             this.appendValueInput("SPEED")
                 .setCheck("Number");
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+            this.appendValueInput("NEXT")
+                .setCheck("WEDO");
+            this.setOutput(true, "WEDO");
             this.setColour(COLOUR_MOTION);
             this.setTooltip("Ligar Motor");
             this.setInputsInline(true);
@@ -56,8 +58,9 @@ export function defineCustomBlocks() {
                 ]), "DIRECTION");
             this.appendValueInput("SPEED")
                 .setCheck("Number");
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+            this.appendValueInput("NEXT")
+                .setCheck("WEDO");
+            this.setOutput(true, "WEDO");
             this.setColour(COLOUR_MOTION);
             this.setTooltip("Girar Motor");
             this.setInputsInline(true);
@@ -72,8 +75,9 @@ export function defineCustomBlocks() {
                 .appendField(new Blockly.FieldImage(ICON_MOTOR, 24, 24, "Motor A"));
             this.appendValueInput("SPEED")
                 .setCheck("Number");
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+            this.appendValueInput("NEXT")
+                .setCheck("WEDO");
+            this.setOutput(true, "WEDO");
             this.setColour(COLOUR_MOTION);
             this.setInputsInline(true);
         }
@@ -86,8 +90,9 @@ export function defineCustomBlocks() {
                 .appendField(new Blockly.FieldImage(ICON_MOTOR, 24, 24, "Motor B"));
             this.appendValueInput("SPEED")
                 .setCheck("Number");
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+            this.appendValueInput("NEXT")
+                .setCheck("WEDO");
+            this.setOutput(true, "WEDO");
             this.setColour(COLOUR_MOTION);
             this.setInputsInline(true);
         }
@@ -99,8 +104,9 @@ export function defineCustomBlocks() {
             this.appendDummyInput()
                 .appendField(new Blockly.FieldImage(ICON_MOTOR, 32, 32, "Motor"))
                 .appendField("🛑");
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+            this.appendValueInput("NEXT")
+                .setCheck("WEDO");
+            this.setOutput(true, "WEDO");
             this.setColour(COLOUR_MOTION);
             this.setTooltip("Parar Motor");
             this.setInputsInline(true);
@@ -128,8 +134,9 @@ export function defineCustomBlocks() {
             this.appendDummyInput()
                 .appendField(new Blockly.FieldImage(ICON_LED, 32, 32, "LED"))
                 .appendField(field, "COLOR");
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+            this.appendValueInput("NEXT")
+                .setCheck("WEDO");
+            this.setOutput(true, "WEDO");
             this.setColour(COLOUR_MOTION);
             this.setTooltip("Cor LED");
             this.setInputsInline(true);
@@ -143,8 +150,9 @@ export function defineCustomBlocks() {
                 .appendField(new Blockly.FieldImage(ICON_WAIT, 32, 32, "Wait"));
             this.appendValueInput("DURATION")
                 .setCheck("Number");
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+            this.appendValueInput("NEXT")
+                .setCheck("WEDO");
+            this.setOutput(true, "WEDO");
             this.setColour(COLOUR_CONTROL);
             this.setTooltip("Esperar");
             this.setInputsInline(true);
@@ -158,10 +166,11 @@ export function defineCustomBlocks() {
                 .appendField(new Blockly.FieldImage(ICON_LOOP, 32, 32, "Loop"));
             this.appendValueInput("TIMES")
                 .setCheck("Number");
-            this.appendStatementInput("DO")
-                .setCheck(null);
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+            this.appendValueInput("SUBSTACK")
+                .setCheck("WEDO");
+            this.appendValueInput("NEXT")
+                .setCheck("WEDO");
+            this.setOutput(true, "WEDO");
             this.setColour(COLOUR_CONTROL);
             this.setTooltip("Repetir");
             this.setInputsInline(true);

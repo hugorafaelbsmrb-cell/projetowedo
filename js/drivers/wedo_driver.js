@@ -282,6 +282,14 @@ export class WeDoDriver {
         await this.motorA(speed); 
         await this.motorB(speed); 
     }
+
+    async motorSpin(direction, speed) {
+        let finalSpeed = speed;
+        if (direction === 'CCW') {
+            finalSpeed = -speed;
+        }
+        await this.motorOn(finalSpeed);
+    }
     
     async getDistance() { 
         return this.sensors.distance; 
