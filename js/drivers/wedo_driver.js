@@ -17,40 +17,27 @@ export class WeDoDriver {
     /* ===============================
        CONEXÃO
     =============================== */
-    async connect() {
-        if (!navigator.bluetooth) {
-            alert("Web Bluetooth não suportado neste navegador.");
-            return false;
-        }
-
-        try {
-            this.device = await navigator.bluetooth.requestDevice({
-                filters: [{ services: [this.LPF2_SERVICE_UUID] }],
-                optionalServices: [this.LPF2_SERVICE_UUID]
-            });
-
-            this.device.addEventListener('gattserverdisconnected', () => {
-                this.connected = false;
-                console.log("WeDo desconectado");
-            });
-
-            this.server = await this.device.gatt.connect();
-            const service = await this.server.getPrimaryService(this.LPF2_SERVICE_UUID);
-            this.characteristic = await service.getCharacteristic(this.LPF2_COMMAND_UUID);
-
-            this.connected = true;
-            console.log("✅ WeDo 2.0 conectado");
-
-            // Inicializa portas de motor
-            await this.initMotor(1); // Motor A
-            await this.initMotor(2); // Motor B
-            
-            return true;
-        } catch (error) {
-            console.error("Erro na conexão WeDo:", error);
-            this.connected = false;
-            return false;
-        }
+    async connect() { 
+        if (!navigator.bluetooth) { 
+            throw new Error("Web Bluetooth não suportado."); 
+        } 
+    
+        this.device = await navigator.bluetooth.requestDevice({ 
+            acceptAllDevices: true, 
+            optionalServices: [this.LPF2_SERVICE_UUID] 
+        }); 
+    
+        this.server = await this.device.gatt.connect(); 
+        const service = await this.server.getPrimaryService(this.LPF2_SERVICE_UUID); 
+        this.characteristic = await service.getCharacteristic(this.LPF2_COMMAND_UUID); 
+    
+        this.connected = true; 
+        console.log("✅ WeDo 2.0 conectado"); 
+    
+        await this.initMotor(1); 
+        await this.initMotor(2);
+        
+        return true;
     }
 
     disconnect() {
