@@ -21,8 +21,15 @@ export class WeDoDriver {
             "0000152b-1212-efde-1523-785feabcd123" // Desliga o Hub (Shutdown)
         ];
 
-        // Lista de características candidatas para envio (de todos os serviços)
+        // Listas de candidatos
         this.writeCandidates = [];
+        this.notifyCandidates = []; // Para sensores
+        
+        // Estado dos sensores
+        this.sensors = {
+            distance: 0,
+            tilt: { x: 0, y: 0 }
+        };
     }
 
     /* ===============================
@@ -35,6 +42,7 @@ export class WeDoDriver {
 
         console.log("🔍 Iniciando busca TOTAL por WeDo 2.0...");
         this.writeCandidates = []; 
+        this.notifyCandidates = [];
 
         try {
             // 1. Solicita dispositivo com permissão para TODOS os serviços alvo
@@ -62,33 +70,42 @@ export class WeDoDriver {
                     
                     // Busca características dentro deste serviço
                     const characteristics = await service.getCharacteristics();
-                    console.log(`   ↳ ${characteristics.length} características neste serviço.`);
-
-                    // Filtra as de escrita e adiciona à lista global (exceto blacklisted)
-                    const candidates = characteristics.filter(c => 
+                    
+                    // A. Filtra WRITES (Motores/LED)
+                    const writers = characteristics.filter(c => 
                         (c.properties.write || c.properties.writeWithoutResponse) &&
                         !this.BLACKLIST_UUIDS.includes(c.uuid)
                     );
                     
-                    candidates.forEach(c => {
-                        console.log(`      ✅ Candidata: ${c.uuid}`);
-                        this.writeCandidates.push(c);
-                    });
+                    writers.forEach(c => this.writeCandidates.push(c));
+
+                    // B. Filtra NOTIFIES (Sensores)
+                    const notifiers = characteristics.filter(c => c.properties.notify);
+                    
+                    for (const c of notifiers) {
+                        console.log(`      👂 Ouvindo Sensor em: ${c.uuid}`);
+                        try {
+                            await c.startNotifications();
+                            c.addEventListener('characteristicvaluechanged', (event) => this.handleSensorData(event, c.uuid));
+                            this.notifyCandidates.push(c);
+                        } catch (e) {
+                            console.warn(`      ⚠️ Falha ao ativar notify em ${c.uuid}`, e);
+                        }
+                    }
 
                 } catch (err) {
-                    // Serviço não existe neste dispositivo, ignora
-                    console.log(`   ⚠️ Serviço ${serviceUUID} não disponível.`);
+                    // Serviço não existe, ignora
                 }
             }
 
             if (this.writeCandidates.length === 0) {
-                throw new Error("Nenhuma característica de escrita encontrada em NENHUM serviço!");
+                throw new Error("Nenhuma característica de escrita encontrada!");
             }
 
-            console.log(`🔫 MODO TOTAL BROADCAST: ${this.writeCandidates.length} alvos prontos (Ignorando 152b).`);
+            console.log(`🔫 MODO TOTAL BROADCAST: ${this.writeCandidates.length} saídas, ${this.notifyCandidates.length} entradas.`);
             this.connected = true;
             
-            // Teste inicial
+            // Teste inicial visual
             await this.setLED("green");
             
             return true;
@@ -101,6 +118,25 @@ export class WeDoDriver {
     }
 
     /* ===============================
+       LEITURA DE SENSORES
+    =============================== */
+    handleSensorData(event, uuid) {
+        const data = event.target.value;
+        const bytes = new Uint8Array(data.buffer);
+        
+        // Log para Debug dos Sensores (Apenas se mudar muito para não floodar)
+        // console.log(`📡 DADOS DE ${uuid}:`, bytes);
+
+        // Tenta decodificar Sensor de Distância (Geralmente bytes flutuantes ou inteiros simples)
+        // WeDo 2.0 Distância costuma ser um float ou int em bytes específicos
+        if (bytes.length >= 2) {
+            // Exemplo simples: assumindo que o byte[1] ou byte[2] é a distância
+            // Isso é experimental. Precisamos ver o log real.
+            this.sensors.distance = bytes[1]; 
+        }
+    }
+
+    /* ===============================
        ENVIO MULTI-SERVIÇO (TOTAL BROADCAST)
     =============================== */
     async send(bytes) {
@@ -108,27 +144,24 @@ export class WeDoDriver {
 
         this.queue = this.queue.then(async () => {
             const data = new Uint8Array(bytes);
-            const hexData = Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' ');
             
-            console.log(`➡️ Broadcast [${hexData}] para ${this.writeCandidates.length} canais:`);
+            // Log reduzido para não poluir
+            // const hexData = Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' ');
+            // console.log(`➡️ Broadcast [${hexData}]...`);
 
             for (const char of this.writeCandidates) {
                 try {
-                    // Log mais detalhado para identificar qual funcionou
                     if (char.properties.write) {
                         await char.writeValue(data);
-                        console.log(`   📡 Enviado via WriteResponse para ${char.uuid}`);
                     } else if (char.properties.writeWithoutResponse) {
                         await char.writeValueWithoutResponse(data);
-                        console.log(`   📡 Enviado via NoResponse para ${char.uuid}`);
                     }
-                    await new Promise(r => setTimeout(r, 20)); 
                 } catch (e) {
-                    console.warn(`   ❌ Falha em ${char.uuid}:`, e.message);
+                    // Silencia erros individuais de envio no broadcast para não assustar
                 }
             }
             
-            await new Promise(r => setTimeout(r, 50));
+            await new Promise(r => setTimeout(r, 20));
         });
         
         return this.queue;
@@ -154,8 +187,14 @@ export class WeDoDriver {
         await this.motorB(speed); 
     }
     
-    async getDistance() { return 0; }
-    async getTilt() { return 0; }
+    async getDistance() { 
+        return this.sensors.distance; 
+    }
+    
+    async getTilt() { 
+        // Mock por enquanto, retornando 0 ou implementando depois
+        return 0; 
+    }
 
     /* ===============================
        MOTORES
