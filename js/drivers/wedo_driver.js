@@ -228,34 +228,32 @@ export class WeDoDriver {
        ENVIO MULTI-SERVIÇO (TOTAL BROADCAST)
     =============================== */
     async send(bytes) {
-        if (this.writeCandidates.length === 0) return;
+        if (this.isStopped) return;
+        return this._enqueue(bytes);
+    }
+
+    async _enqueue(bytes) {
+        if (!this.device || !this.device.gatt.connected) return;
 
         this.queue = this.queue.then(async () => {
+            if (this.isStopped) return;
+
             const data = new Uint8Array(bytes);
             
-            console.log(`➡️ Tentando enviar comando [${bytes.join(',')}] para ${this.writeCandidates.length} porta(s)...`);
-
             for (const char of this.writeCandidates) {
-                console.log(`   👉 Tentando UUID: ${char.uuid}`);
                 try {
-                    // Prioriza WriteWithoutResponse para performance (Motores/LED)
                     if (char.properties.writeWithoutResponse) {
                         await char.writeValueWithoutResponse(data);
-                        console.log(`      ✅ Sucesso (WriteWithoutResponse) em ${char.uuid}`);
                     } else if (char.properties.write) {
                         await char.writeValue(data);
-                        console.log(`      ✅ Sucesso (Write) em ${char.uuid}`);
                     }
                 } catch (e) {
-                    console.log(`      ❌ Falha em ${char.uuid}:`, e);
+                    console.warn(`❌ Falha em ${char.uuid}:`, e);
                 }
 
-                // Delay de 5 segundos para Debug Visual (Solicitado pelo usuário)
-                console.log(`   ⏳ Aguardando 5s antes do próximo envio (Teste a porta ${char.uuid})...`);
-                await new Promise(r => setTimeout(r, 5000));
+                // Delay mínimo para estabilidade (10ms)
+                await new Promise(r => setTimeout(r, 10));
             }
-            
-            await new Promise(r => setTimeout(r, 50));
         });
         
         return this.queue;
