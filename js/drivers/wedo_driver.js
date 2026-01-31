@@ -1,6 +1,6 @@
 // js/drivers/wedo_driver.js
-// LEGO WeDo 2.0 – Driver Nativo "Broadcast Mode"
-// Motivo: Envia comandos para TODAS as características de escrita disponíveis para garantir funcionamento.
+// LEGO WeDo 2.0 – Driver "Total Broadcast" (Multi-Serviço)
+// Motivo: Se a característica 1565 não aparece no serviço 1523, buscamos em TODOS os serviços conhecidos da LEGO.
 
 export class WeDoDriver {
     constructor() {
@@ -9,28 +9,33 @@ export class WeDoDriver {
         this.connected = false;
         this.queue = Promise.resolve();
         
-        // UUID do Serviço Legacy (Padrão WeDo 2.0)
-        this.SERVICE_UUID = "00001523-1212-efde-1523-785feabcd123";
+        // Lista de UUIDs de Serviços Possíveis (Legacy, LPF2, Nordic)
+        this.TARGET_SERVICES = [
+            "00001523-1212-efde-1523-785feabcd123", // WeDo Legacy
+            "00004f0e-1212-efde-1523-785feabcd123", // LPF2 Smart Hub
+            "00001623-1212-efde-1523-785feabcd123"  // LPF2 Alternativo
+        ];
         
-        // Lista de características candidatas para envio
+        // Lista de características candidatas para envio (de todos os serviços)
         this.writeCandidates = [];
     }
 
     /* ===============================
-       CONEXÃO ROBUSTA
+       CONEXÃO VARREDURA TOTAL
     =============================== */
     async connect() {
         if (!navigator.bluetooth) {
             throw new Error("Web Bluetooth não suportado neste navegador.");
         }
 
-        console.log("🔍 Iniciando busca por WeDo 2.0...");
-        this.writeCandidates = []; // Limpa lista anterior
+        console.log("🔍 Iniciando busca TOTAL por WeDo 2.0...");
+        this.writeCandidates = []; 
 
         try {
+            // 1. Solicita dispositivo com permissão para TODOS os serviços alvo
             this.device = await navigator.bluetooth.requestDevice({
                 acceptAllDevices: true,
-                optionalServices: [this.SERVICE_UUID]
+                optionalServices: this.TARGET_SERVICES 
             });
 
             console.log("📱 Dispositivo selecionado:", this.device.name);
@@ -43,31 +48,41 @@ export class WeDoDriver {
             this.server = await this.device.gatt.connect();
             console.log("🔌 Conectado ao GATT");
 
-            const service = await this.server.getPrimaryService(this.SERVICE_UUID);
-            console.log("🛠️ Serviço encontrado:", service.uuid);
+            // 2. Varredura de Serviços
+            // Tenta obter cada serviço da lista. Alguns podem não existir, e tudo bem.
+            for (const serviceUUID of this.TARGET_SERVICES) {
+                try {
+                    const service = await this.server.getPrimaryService(serviceUUID);
+                    console.log(`🛠️ Serviço Encontrado: ${service.uuid}`);
+                    
+                    // Busca características dentro deste serviço
+                    const characteristics = await service.getCharacteristics();
+                    console.log(`   ↳ ${characteristics.length} características neste serviço.`);
 
-            // Mapeamento de TODAS as características
-            const characteristics = await service.getCharacteristics();
-            console.log(`📋 Total de características encontradas: ${characteristics.length}`);
+                    // Filtra as de escrita e adiciona à lista global
+                    const candidates = characteristics.filter(c => 
+                        c.properties.write || c.properties.writeWithoutResponse
+                    );
+                    
+                    candidates.forEach(c => {
+                        console.log(`      ✅ Candidata: ${c.uuid}`);
+                        this.writeCandidates.push(c);
+                    });
 
-            // Filtra todas que aceitam escrita
-            this.writeCandidates = characteristics.filter(c => 
-                c.properties.write || c.properties.writeWithoutResponse
-            );
-
-            if (this.writeCandidates.length === 0) {
-                throw new Error("Nenhuma característica de escrita encontrada!");
+                } catch (err) {
+                    // Serviço não existe neste dispositivo, ignora
+                    console.log(`   ⚠️ Serviço ${serviceUUID} não disponível.`);
+                }
             }
 
-            console.log("🔫 MODO BROADCAST ATIVADO: Comandos serão enviados para:");
-            this.writeCandidates.forEach(c => {
-                console.log(`   - UUID: ${c.uuid} (Write: ${c.properties.write}, NoResp: ${c.properties.writeWithoutResponse})`);
-            });
+            if (this.writeCandidates.length === 0) {
+                throw new Error("Nenhuma característica de escrita encontrada em NENHUM serviço!");
+            }
 
+            console.log(`🔫 MODO TOTAL BROADCAST: ${this.writeCandidates.length} alvos prontos.`);
             this.connected = true;
             
-            // Teste inicial: Piscar LED em todas as portas
-            console.log("🧪 Iniciando teste de injeção em todas as portas...");
+            // Teste inicial
             await this.setLED("green");
             
             return true;
@@ -80,7 +95,7 @@ export class WeDoDriver {
     }
 
     /* ===============================
-       ENVIO MULTI-PORTA (BROADCAST)
+       ENVIO MULTI-SERVIÇO (TOTAL BROADCAST)
     =============================== */
     async send(bytes) {
         if (this.writeCandidates.length === 0) return;
@@ -89,29 +104,24 @@ export class WeDoDriver {
             const data = new Uint8Array(bytes);
             const hexData = Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' ');
             
-            console.log(`➡️ Broadcast [${hexData}] para ${this.writeCandidates.length} alvos:`);
+            console.log(`➡️ Broadcast [${hexData}] para ${this.writeCandidates.length} canais:`);
 
-            // Dispara para todas as características candidatas
             for (const char of this.writeCandidates) {
                 try {
-                    // Tenta WriteWithResponse primeiro se disponível
+                    // Log mais detalhado para identificar qual funcionou
                     if (char.properties.write) {
                         await char.writeValue(data);
-                        console.log(`   ✅ Enviado para ${char.uuid} (Com Resposta)`);
-                    } 
-                    // Se não, tenta WriteWithoutResponse
-                    else if (char.properties.writeWithoutResponse) {
+                        console.log(`   📡 Enviado via WriteResponse para ${char.uuid}`);
+                    } else if (char.properties.writeWithoutResponse) {
                         await char.writeValueWithoutResponse(data);
-                        console.log(`   ✅ Enviado para ${char.uuid} (Sem Resposta)`);
+                        console.log(`   📡 Enviado via NoResponse para ${char.uuid}`);
                     }
-                    // Pequeno delay entre envios para não engasgar o BLE
                     await new Promise(r => setTimeout(r, 20)); 
                 } catch (e) {
-                    console.warn(`   ⚠️ Falha em ${char.uuid}:`, e.message);
+                    console.warn(`   ❌ Falha em ${char.uuid}:`, e.message);
                 }
             }
             
-            // Delay final de ciclo
             await new Promise(r => setTimeout(r, 50));
         });
         
