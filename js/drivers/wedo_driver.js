@@ -1,41 +1,106 @@
 // js/drivers/wedo_driver.js
-// Driver WeDo 2.0 usando node-poweredup (ESTÁVEL)
+// LEGO WeDo 2.0 – Driver Nativo Otimizado (Final)
+// Motivo: A biblioteca externa falhou na detecção do serviço Legacy.
+// Esta versão usa Web Bluetooth puro com busca robusta de características.
 
 export class WeDoDriver {
     constructor() {
-        this.poweredUP = null;
-        this.hub = null;
+        this.device = null;
+        this.server = null;
+        this.characteristic = null;
         this.connected = false;
+        this.queue = Promise.resolve();
+        
+        // UUID do Serviço Legacy (Padrão WeDo 2.0)
+        this.SERVICE_UUID = "00001523-1212-efde-1523-785feabcd123";
     }
 
     /* ===============================
-       CONECTAR AO HUB
+       CONEXÃO ROBUSTA
     =============================== */
     async connect() {
-        if (!window.PoweredUP) {
-            throw new Error("Biblioteca PoweredUP não carregada.");
+        if (!navigator.bluetooth) {
+            throw new Error("Web Bluetooth não suportado neste navegador.");
         }
 
-        this.poweredUP = new PoweredUP.PoweredUP();
+        console.log("🔍 Iniciando busca por WeDo 2.0...");
 
-        return new Promise((resolve, reject) => {
-            this.poweredUP.on("discover", async (hub) => {
-                try {
-                    console.log("🟦 Hub encontrado:", hub.name);
-                    this.hub = hub;
-
-                    await hub.connect();
-                    this.connected = true;
-
-                    console.log("✅ WeDo 2.0 conectado via PoweredUP");
-                    resolve(true);
-                } catch (e) {
-                    reject(e);
-                }
+        try {
+            // 1. Solicitar dispositivo (Permissivo)
+            this.device = await navigator.bluetooth.requestDevice({
+                acceptAllDevices: true,
+                optionalServices: [this.SERVICE_UUID] // Essencial para permissão de acesso
             });
 
-            this.poweredUP.scan();
+            console.log("📱 Dispositivo selecionado:", this.device.name);
+
+            this.device.addEventListener('gattserverdisconnected', () => {
+                this.connected = false;
+                console.log("❌ Desconectado pelo dispositivo");
+            });
+
+            // 2. Conectar ao Servidor GATT
+            this.server = await this.device.gatt.connect();
+            console.log("🔌 Conectado ao GATT");
+
+            // 3. Obter Serviço Principal
+            const service = await this.server.getPrimaryService(this.SERVICE_UUID);
+            console.log("🛠️ Serviço encontrado:", service.uuid);
+
+            // 4. Buscar Característica de Escrita (Dinâmica)
+            // Não buscamos por UUID fixo para evitar erros de versão de firmware
+            const characteristics = await service.getCharacteristics();
+            
+            // Procura qualquer característica que permita escrita
+            this.characteristic = characteristics.find(c => 
+                c.properties.write || c.properties.writeWithoutResponse
+            );
+
+            if (!this.characteristic) {
+                throw new Error("Nenhuma característica de escrita encontrada no serviço.");
+            }
+
+            console.log("✅ Característica de comando vinculada:", this.characteristic.uuid);
+            
+            this.connected = true;
+            
+            // Feedback visual rápido (piscar LED)
+            await this.setLED("green");
+            
+            return true;
+
+        } catch (error) {
+            console.error("🚨 Erro na conexão:", error);
+            this.connected = false;
+            throw error;
+        }
+    }
+
+    /* ===============================
+       FILA DE COMANDOS (Anti-conflito)
+    =============================== */
+    async send(bytes) {
+        if (!this.characteristic) return;
+
+        // Enfileira comandos para evitar "GATT Operation in Progress"
+        this.queue = this.queue.then(async () => {
+            try {
+                const data = new Uint8Array(bytes);
+                
+                if (this.characteristic.properties.writeWithoutResponse) {
+                    await this.characteristic.writeValueWithoutResponse(data);
+                } else {
+                    await this.characteristic.writeValue(data);
+                }
+                
+                // Pequeno delay para estabilidade
+                await new Promise(r => setTimeout(r, 50));
+            } catch (e) {
+                console.warn("Falha no envio:", e);
+            }
         });
+        
+        return this.queue;
     }
 
     /* ===============================
@@ -44,88 +109,72 @@ export class WeDoDriver {
     isConnected() { return this.connected; }
     
     disconnect() {
-        if (this.hub) {
-            this.hub.disconnect();
+        if (this.device && this.device.gatt.connected) {
+            this.device.gatt.disconnect();
         }
         this.connected = false;
     }
 
     async wait(ms) { return new Promise(r => setTimeout(r, ms)); }
-    
-    async stopAll() { 
-        await this.motorOff(); 
-    }
-    
-    async motorOn(speed) { 
-        await this.motorA(speed); 
-        await this.motorB(speed); 
-    }
-    
+    async stopAll() { await this.motorOff(); }
+    async motorOn(speed) { await this.motorA(speed); await this.motorB(speed); }
     async getDistance() { return 0; }
     async getTilt() { return 0; }
 
     /* ===============================
        MOTORES
     =============================== */
-
+    // Motor A = Porta 1
     async motorA(speed) {
-        if (!this.hub) return;
-        await this.hub.setMotorSpeed("A", speed);
+        let s = Math.max(-100, Math.min(100, speed));
+        // Conversão para byte assinado (complemento de 2 se necessário, mas WeDo aceita direto em alguns modos)
+        // Protocolo Legacy: [Port, Command, Mode, Power]
+        // Power é 0-100 ou 255-156 para negativo? 
+        // Normalmente WeDo Legacy aceita Int8 direto se o array for tipado, mas Uint8Array precisa de conversão
+        let p = s < 0 ? 256 + s : s; 
+        await this.send([0x01, 0x01, 0x01, p]);
     }
 
+    // Motor B = Porta 2
     async motorB(speed) {
-        if (!this.hub) return;
-        await this.hub.setMotorSpeed("B", speed);
+        let s = Math.max(-100, Math.min(100, speed));
+        let p = s < 0 ? 256 + s : s;
+        await this.send([0x02, 0x01, 0x01, p]);
     }
 
     async motorOff() {
-        if (!this.hub) return;
-        await this.hub.setMotorSpeed("A", 0);
-        await this.hub.setMotorSpeed("B", 0);
+        await this.motorA(0);
+        await this.motorB(0);
     }
 
     /* ===============================
        LED DO HUB
     =============================== */
     async setLED(color) {
-        if (!this.hub) return;
+        let index = 0;
 
-        // Mapeamento HEX para Cores PoweredUP (Compatibilidade)
-        let colorName = "off";
-        
-        if (typeof color === 'string') {
+        // Mapeamento Inteligente: Nome/Hex -> Índice WeDo
+        if (typeof color === 'number') {
+            index = color;
+        } else if (typeof color === 'string') {
             const hex = color.toLowerCase();
-            // Mapa aproximado HEX -> PoweredUP Color Name
             const map = {
-                "#000000": "off",
-                "#ffc0cb": "pink",
-                "#800080": "purple",
-                "#0000ff": "blue",
-                "#00ffff": "cyan",
-                "#008080": "green", // Teal -> Green (approx)
-                "#00ff00": "green",
-                "#ffff00": "yellow",
-                "#ffa500": "orange", // Orange -> Red/Yellow? PoweredUP usually supports orange? Check docs if fail. 
-                // PoweredUP colors: black, pink, purple, blue, lightblue, cyan, green, yellow, orange, red, white
-                "#ff0000": "red",
-                "#ffffff": "white"
+                "off": 0, "#000000": 0,
+                "pink": 1, "#ffc0cb": 1,
+                "purple": 2, "#800080": 2,
+                "blue": 3, "#0000ff": 3,
+                "cyan": 4, "#00ffff": 4,
+                "teal": 5, "#008080": 5,
+                "green": 6, "#00ff00": 6,
+                "yellow": 7, "#ffff00": 7,
+                "orange": 8, "#ffa500": 8,
+                "red": 9, "#ff0000": 9,
+                "white": 10, "#ffffff": 10
             };
-            
-            // Ajuste para cores específicas se necessário, mas 'orange' costuma existir no WeDo via PoweredUP
-            colorName = map[hex] || "white";
-        } else if (typeof color === 'number') {
-             // Se vier index numérico (legado), mapeia para cores básicas
-             const indexMap = ["off", "pink", "purple", "blue", "cyan", "green", "green", "yellow", "orange", "red", "white"];
-             colorName = indexMap[color] || "white";
-        } else {
-             colorName = color; // Assume que já veio string válida (ex: "red")
+            index = map[hex] !== undefined ? map[hex] : 10; // Default white
         }
 
-        // Cores aceitas: "red", "green", "blue", "yellow", "white", "off" ...
-        try {
-            await this.hub.setLEDColor(colorName);
-        } catch (e) {
-            console.warn("Cor não suportada ou erro no LED:", e);
-        }
+        // Comando LED: [Port=0x06, Command=0x04, Mode=0x01, ColorIndex]
+        await this.send([0x06, 0x04, 0x01, index]);
     }
 }
