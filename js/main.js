@@ -23,7 +23,16 @@ const fileInput = document.getElementById('file-input');
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize Icons
-    lucide.createIcons();
+    if (window.lucide) {
+        lucide.createIcons();
+    } else {
+        console.warn('Lucide icons library not loaded');
+    }
+
+    // Check if running via file:// protocol (ES Modules won't work)
+    if (window.location.protocol === 'file:') {
+        alert('Atenção: Esta aplicação precisa rodar em um servidor web (Localhost ou Vercel) para funcionar corretamente. O protocolo file:// não suporta módulos JavaScript.');
+    }
 
     // Setup Blockly
     workspace = setupBlockly('blockly-div');
