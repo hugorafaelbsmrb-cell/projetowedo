@@ -41,6 +41,7 @@ if (!fs.existsSync(BLOCKS_FILE)) {
     const defaultBlocks = [
         { id: 'event_start', type: 'event_start', icon: 'assets/block_icons/play.svg', name: 'Iniciar' },
         { id: 'motor_on', type: 'motor_on', icon: 'assets/block_icons/motor.svg', name: 'Motor Ligar' },
+        { id: 'motor_off', type: 'motor_off', icon: 'assets/block_icons/motor.svg', name: 'Motor Parar' },
         { id: 'motor_spin', type: 'motor_spin', icon: 'assets/block_icons/motor.svg', name: 'Motor Girar' },
         { id: 'control_wait', type: 'control_wait', icon: 'assets/block_icons/wait.svg', name: 'Esperar' },
         { id: 'control_repeat', type: 'control_repeat', icon: 'assets/block_icons/loop.svg', name: 'Repetir' },
