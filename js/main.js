@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-cancel-settings').addEventListener('click', closeSettingsModal);
     document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
     document.getElementById('settings-logo-type').addEventListener('change', toggleLogoInput);
+    document.getElementById('btn-copy-embed').addEventListener('click', copyEmbedCode);
     
     // Logout Listener
     document.getElementById('btn-logout').addEventListener('click', handleLogout);
@@ -345,11 +346,45 @@ function openSettingsModal() {
     
     toggleLogoInput();
     
+    // Generate Embed Code
+    const baseUrl = window.location.href.replace('/index.html', '').replace(/\/$/, '');
+    const embedCode = `<iframe 
+    src="${baseUrl}" 
+    width="100%" 
+    height="600px" 
+    frameborder="0" 
+    allow="bluetooth; microphone; camera"
+    allowfullscreen>
+</iframe>`;
+    document.getElementById('embed-code').value = embedCode;
+
     document.getElementById('settings-modal').style.display = 'flex';
 }
 
 function closeSettingsModal() {
     document.getElementById('settings-modal').style.display = 'none';
+}
+
+function copyEmbedCode() {
+    const embedText = document.getElementById('embed-code');
+    embedText.select();
+    embedText.setSelectionRange(0, 99999); // For mobile devices
+    
+    navigator.clipboard.writeText(embedText.value).then(() => {
+        const btn = document.getElementById('btn-copy-embed');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i data-lucide="check" style="width: 16px; height: 16px; margin-right: 8px;"></i> Copiado!';
+        btn.classList.remove('btn-blue');
+        btn.classList.add('btn-green');
+        if (window.lucide) lucide.createIcons();
+        
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('btn-green');
+            btn.classList.add('btn-blue');
+            if (window.lucide) lucide.createIcons();
+        }, 2000);
+    });
 }
 
 function toggleLogoInput() {

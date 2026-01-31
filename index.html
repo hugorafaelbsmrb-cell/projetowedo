@@ -108,6 +108,19 @@
                     <label for="settings-logo-url">URL da Logo</label>
                     <input type="text" id="settings-logo-url" placeholder="https://...">
                 </div>
+
+                <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+
+                <div class="form-group">
+                    <label>Código de Incorporação (Embed)</label>
+                    <p style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">
+                        Copie o código abaixo para inserir a plataforma em seu site ou LMS.
+                    </p>
+                    <textarea id="embed-code" readonly style="width: 100%; height: 120px; font-family: monospace; font-size: 0.9rem; padding: 10px; border: 2px solid #eee; border-radius: 10px; background: #f9f9f9; resize: none;"></textarea>
+                    <button id="btn-copy-embed" class="btn btn-blue" style="margin-top: 10px; padding: 8px 15px; width: 100%; border-radius: 10px; font-size: 0.9rem;">
+                        <i data-lucide="copy" style="width: 16px; height: 16px; margin-right: 8px;"></i> Copiar Código
+                    </button>
+                </div>
             </div>
             <div class="modal-footer">
                 <button id="btn-cancel-settings" class="btn btn-red" style="padding: 10px 20px; width: auto; height: auto; border-radius: 10px;">Cancelar</button>
