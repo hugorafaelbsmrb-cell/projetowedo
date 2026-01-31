@@ -235,19 +235,21 @@ export class WeDoDriver {
         this.queue = this.queue.then(async () => {
             const data = new Uint8Array(bytes);
             
-            // Log reduzido para não poluir
-            // const hexData = Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' ');
-            // console.log(`➡️ Broadcast [${hexData}]...`);
+            console.log(`➡️ Tentando enviar comando [${bytes.join(',')}] para ${this.writeCandidates.length} porta(s)...`);
 
             for (const char of this.writeCandidates) {
+                console.log(`   👉 Tentando UUID: ${char.uuid}`);
                 try {
-                    if (char.properties.write) {
-                        await char.writeValue(data);
-                    } else if (char.properties.writeWithoutResponse) {
+                    // Prioriza WriteWithoutResponse para performance (Motores/LED)
+                    if (char.properties.writeWithoutResponse) {
                         await char.writeValueWithoutResponse(data);
+                        console.log(`      ✅ Sucesso (WriteWithoutResponse) em ${char.uuid}`);
+                    } else if (char.properties.write) {
+                        await char.writeValue(data);
+                        console.log(`      ✅ Sucesso (Write) em ${char.uuid}`);
                     }
                 } catch (e) {
-                    // Silencia erros individuais de envio no broadcast para não assustar
+                    console.log(`      ❌ Falha em ${char.uuid}:`, e);
                 }
             }
             
