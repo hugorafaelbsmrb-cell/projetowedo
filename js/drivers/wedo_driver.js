@@ -1,7 +1,6 @@
 // js/drivers/wedo_driver.js
-// LEGO WeDo 2.0 – Driver Nativo Otimizado (Final)
-// Motivo: A biblioteca externa falhou na detecção do serviço Legacy.
-// Esta versão usa Web Bluetooth puro com busca robusta de características.
+// LEGO WeDo 2.0 – Driver Nativo Otimizado (Final v2)
+// Motivo: Ajuste para forçar WriteWithResponse e garantir envio de comandos.
 
 export class WeDoDriver {
     constructor() {
@@ -52,7 +51,6 @@ export class WeDoDriver {
             // 4. Buscar Característica de Escrita (Prioridade 1565)
             const characteristics = await service.getCharacteristics();
             
-            // Log para debug
             console.log("📋 Características disponíveis:");
             characteristics.forEach(c => console.log(`   - ${c.uuid} (Write: ${c.properties.write}, WriteNoResp: ${c.properties.writeWithoutResponse})`));
 
@@ -77,7 +75,8 @@ export class WeDoDriver {
             
             this.connected = true;
             
-            // Feedback visual rápido (piscar LED)
+            // Sequência de Inicialização (Stop All + Blink)
+            await this.motorOff();
             await this.setLED("green");
             
             return true;
@@ -99,17 +98,22 @@ export class WeDoDriver {
         this.queue = this.queue.then(async () => {
             try {
                 const data = new Uint8Array(bytes);
+                console.log("➡️ Enviando:", Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' '));
                 
-                if (this.characteristic.properties.writeWithoutResponse) {
+                // Prioriza WriteWithResponse para garantir entrega (WeDo Legacy prefere isso)
+                if (this.characteristic.properties.write) {
+                    await this.characteristic.writeValue(data);
+                } else if (this.characteristic.properties.writeWithoutResponse) {
                     await this.characteristic.writeValueWithoutResponse(data);
                 } else {
-                    await this.characteristic.writeValue(data);
+                    console.warn("⚠️ Característica não possui permissão de escrita clara.");
+                    await this.characteristic.writeValue(data); // Tenta mesmo assim
                 }
                 
-                // Pequeno delay para estabilidade
-                await new Promise(r => setTimeout(r, 50));
+                // Delay necessário para o Hub processar
+                await new Promise(r => setTimeout(r, 60));
             } catch (e) {
-                console.warn("Falha no envio:", e);
+                console.warn("🚨 Falha no envio:", e);
             }
         });
         
@@ -130,25 +134,29 @@ export class WeDoDriver {
 
     async wait(ms) { return new Promise(r => setTimeout(r, ms)); }
     async stopAll() { await this.motorOff(); }
-    async motorOn(speed) { await this.motorA(speed); await this.motorB(speed); }
+    
+    // Liga ambos os motores
+    async motorOn(speed) { 
+        await this.motorA(speed); 
+        await this.motorB(speed); 
+    }
+    
     async getDistance() { return 0; }
     async getTilt() { return 0; }
 
     /* ===============================
        MOTORES
     =============================== */
-    // Motor A = Porta 1
+    // Motor A = Porta 1 (0x01)
     async motorA(speed) {
         let s = Math.max(-100, Math.min(100, speed));
-        // Conversão para byte assinado (complemento de 2 se necessário, mas WeDo aceita direto em alguns modos)
-        // Protocolo Legacy: [Port, Command, Mode, Power]
-        // Power é 0-100 ou 255-156 para negativo? 
-        // Normalmente WeDo Legacy aceita Int8 direto se o array for tipado, mas Uint8Array precisa de conversão
+        // Conversão Signed Int8 -> Uint8
         let p = s < 0 ? 256 + s : s; 
+        // Payload: [Port, Command, Mode, Power]
         await this.send([0x01, 0x01, 0x01, p]);
     }
 
-    // Motor B = Porta 2
+    // Motor B = Porta 2 (0x02)
     async motorB(speed) {
         let s = Math.max(-100, Math.min(100, speed));
         let p = s < 0 ? 256 + s : s;
@@ -156,6 +164,7 @@ export class WeDoDriver {
     }
 
     async motorOff() {
+        // Envia comando de parada explícito (Velocidade 0)
         await this.motorA(0);
         await this.motorB(0);
     }
@@ -166,7 +175,6 @@ export class WeDoDriver {
     async setLED(color) {
         let index = 0;
 
-        // Mapeamento Inteligente: Nome/Hex -> Índice WeDo
         if (typeof color === 'number') {
             index = color;
         } else if (typeof color === 'string') {
@@ -184,7 +192,7 @@ export class WeDoDriver {
                 "red": 9, "#ff0000": 9,
                 "white": 10, "#ffffff": 10
             };
-            index = map[hex] !== undefined ? map[hex] : 10; // Default white
+            index = map[hex] !== undefined ? map[hex] : 10;
         }
 
         // Comando LED: [Port=0x06, Command=0x04, Mode=0x01, ColorIndex]
