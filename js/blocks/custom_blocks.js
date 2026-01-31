@@ -1,11 +1,11 @@
 export function defineCustomBlocks() {
     
-    // --- Colors (WeDo 2.0 Palette) ---
-    const COLOUR_EVENT = "#FFD700";   // Yellow (Flow)
-    const COLOUR_CONTROL = "#FF8C00"; // Orange (Control)
-    const COLOUR_MOTION = "#4CAF50";  // Green (Motor)
-    const COLOUR_SENSOR = "#E91E63";  // Pink/Red (Sensors/Display)
-    const COLOUR_SOUND = "#E91E63";   // Pink (Sound)
+    // --- Colors (WeDo 2.0 Palette - User Custom) ---
+    const COLOUR_MOTION = "#448AFF";  // Blue (Motion)
+    const COLOUR_CONTROL = "#FFD700"; // Yellow (Control)
+    const COLOUR_EVENT = "#FF9800";   // Orange (Events)
+    const COLOUR_SENSOR = "#4CAF50";  // Green (Sensors)
+    const COLOUR_SOUND = "#E91E63";   // Pink (Sound - Optional)
 
     // --- Icons (Base64 SVGs) ---
     const ICON_PLAY = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwOTY4OCI+PHBhdGggZD0iTTggNXYxNGwxMS03eiIvPjwvc3ZnPg==";

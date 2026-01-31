@@ -10,7 +10,7 @@ export function setupBlockly(containerId) {
             {
                 "kind": "category",
                 "name": "Eventos",
-                "colour": "#FFD700",
+                "colour": "#FF9800", // Orange
                 "contents": [
                     {
                         "kind": "block",
@@ -21,7 +21,7 @@ export function setupBlockly(containerId) {
             {
                 "kind": "category",
                 "name": "Controle",
-                "colour": "#FF8C00",
+                "colour": "#FFD700", // Yellow
                 "contents": [
                     {
                         "kind": "block",
@@ -50,35 +50,17 @@ export function setupBlockly(containerId) {
                                 }
                             }
                         }
-                    },
-                    {
-                        "kind": "block",
-                        "type": "controls_if"
                     }
                 ]
             },
             {
                 "kind": "category",
                 "name": "Movimento",
-                "colour": "#0066CC",
+                "colour": "#2196F3", // Blue
                 "contents": [
                     {
                         "kind": "block",
                         "type": "motor_a_speed",
-                        "inputs": {
-                            "SPEED": {
-                                "shadow": {
-                                    "type": "math_number",
-                                    "fields": {
-                                        "NUM": 50
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    {
-                        "kind": "block",
-                        "type": "motor_b_speed",
                         "inputs": {
                             "SPEED": {
                                 "shadow": {
@@ -98,11 +80,15 @@ export function setupBlockly(containerId) {
                                 "shadow": {
                                     "type": "math_number",
                                     "fields": {
-                                        "NUM": 100
+                                        "NUM": 50
                                     }
                                 }
                             }
                         }
+                    },
+                    {
+                        "kind": "block",
+                        "type": "motor_off"
                     },
                     {
                         "kind": "block",
@@ -117,40 +103,17 @@ export function setupBlockly(containerId) {
                                 }
                             }
                         }
-                    },
-                    {
-                        "kind": "block",
-                        "type": "motor_off"
-                    },
-                    {
-                        "kind": "block",
-                        "type": "led_set_color"
                     }
                 ]
             },
             {
                 "kind": "category",
                 "name": "Sensores",
-                "colour": "#4CAF50",
+                "colour": "#4CAF50", // Green
                 "contents": [
                     {
-                        "kind": "block",
-                        "type": "sensor_distance"
-                    },
-                    {
-                        "kind": "block",
-                        "type": "sensor_tilt"
-                    }
-                ]
-            },
-            {
-                "kind": "category",
-                "name": "Sons",
-                "colour": "#9C27B0",
-                "contents": [
-                    {
-                        "kind": "block",
-                        "type": "sound_play"
+                         "kind": "block",
+                         "type": "led_set_color"
                     }
                 ]
             }
@@ -161,29 +124,24 @@ export function setupBlockly(containerId) {
         toolbox: toolbox,
         scrollbars: true,
         trashcan: true,
-        move: {
-            scrollbars: true,
-            drag: true,
-            wheel: true
-        },
-        grid: {
-            spacing: 20,
-            length: 3,
-            colour: '#ccc',
-            snap: true
-        },
+        sounds: true,
+        media: 'https://unpkg.com/blockly/media/',
+        renderer: 'zelos', // Scratch-like renderer (capsule shapes)
+        horizontalLayout: true,
+        toolboxPosition: 'end',
         zoom: {
             controls: true,
             wheel: true,
-            startScale: 1.0,
+            startScale: 0.9,
             maxScale: 3,
             minScale: 0.3,
             scaleSpeed: 1.2
         },
-        // Configuração para toolbox horizontal na parte inferior
-        toolboxPosition: 'end', 
-        horizontalLayout: true,
-        renderer: 'geras' // 'geras' is the standard modern renderer, good for rounded look
+        move: {
+            scrollbars: true,
+            drag: true,
+            wheel: false
+        }
     });
 
     // Initialize JavaScript generator if not already present
