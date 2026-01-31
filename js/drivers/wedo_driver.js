@@ -294,8 +294,8 @@ export class WeDoDriver {
         
         if (this.isLegacy) {
             // Protocolo WeDo 2.0 Legacy (Characteristic 1565)
-            // Baseado em vheun/wedo2: [Port, 0x01, 0x02, Power]
-            await this.sendCommand([0x01, 0x01, 0x02, powerByte]);
+            // Baseado em vheun/wedo2: [Port, 0x01, 0x01, Power]
+            await this.sendCommand([0x01, 0x01, 0x01, powerByte]);
         } else {
             // Protocolo LPF2 (Characteristic 1624)
             // Motor na Porta 1
@@ -316,7 +316,7 @@ export class WeDoDriver {
         
         if (this.isLegacy) {
             // Protocolo WeDo 2.0 Legacy (Characteristic 1565)
-            await this.sendCommand([0x02, 0x01, 0x02, powerByte]);
+            await this.sendCommand([0x02, 0x01, 0x01, powerByte]);
         } else {
             // Protocolo LPF2 (Characteristic 1624)
             // Motor na Porta 2
@@ -365,10 +365,13 @@ export class WeDoDriver {
         const index = colorMap[colorHex.toLowerCase()] || 0;
         console.log(`WeDo: Set LED ${colorHex} (Index ${index})`);
 
+        // WeDo 2.0 Legacy Protocol (UUID 1565)
+        // LED Command: [Port 0x06, Command 0x04, Mode 0x01, ColorIndex]
         if (this.isLegacy) {
-            // Protocolo WeDo 2.0 Legacy
-            // Baseado em vheun/wedo2: [Port=0x06, Cmd=0x04, Mode=0x01, Index]
-            await this.sendCommand([0x06, 0x04, 0x01, index]);
+            // Nota: Se 0x04 não funcionar, tentar 0x01 como no motor
+            const buffer = new Uint8Array([0x06, 0x04, 0x01, index]);
+            
+            await this.sendCommand(buffer);
         } else {
             // Protocolo LPF2
             // [0x06, 0x00, 0x81, Port=0x06, 0x11, 0x51, Index]
