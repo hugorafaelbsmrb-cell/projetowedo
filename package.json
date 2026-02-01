@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/hugorafaelbsmrb-cell/projetowedo#readme",
   "dependencies": {
+    "@supabase/supabase-js": "^2.93.3",
     "body-parser": "^2.2.2",
     "cors": "^2.8.6",
     "express": "^5.2.1",

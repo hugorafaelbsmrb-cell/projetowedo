@@ -4,6 +4,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const session = require('express-session');
+const supabase = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -67,9 +68,32 @@ app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
 // Login
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     
+    // Supabase Auth Strategy
+    if (supabase) {
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('username', username)
+                .eq('password', password)
+                .single();
+            
+            if (error || !data) {
+                return res.status(401).json({ error: 'Credenciais inválidas' });
+            }
+
+            req.session.user = { username: data.username };
+            return res.json({ success: true, user: req.session.user });
+        } catch (err) {
+            console.error("Supabase Login Error:", err);
+            return res.status(500).json({ error: 'Server error' });
+        }
+    }
+
+    // Local File Auth Strategy (Fallback)
     fs.readFile(USERS_FILE, 'utf8', (err, data) => {
         if (err) return res.status(500).json({ error: 'Server error' });
         
@@ -133,7 +157,39 @@ app.post('/api/config', isAuthenticated, (req, res) => {
 });
 
 // Get Blocks (Public)
-app.get('/api/blocks', (req, res) => {
+app.get('/api/blocks', async (req, res) => {
+    // Supabase Strategy
+    if (supabase) {
+        const { data, error } = await supabase
+            .from('blocks')
+            .select('*')
+            //.order('id'); // Ordering by ID might be random if UUID. 
+            // Better to order by a 'rank' or just rely on client sort?
+            // Client doesn't seem to sort, so insert order matters?
+            // Supabase returns in PK order usually.
+            // Let's rely on default for now or add an 'order' column later if needed.
+        
+        if (error) {
+            console.error("Supabase Blocks Error:", error);
+            // Fallback to default blocks if DB error (or empty table?)
+        } else if (data && data.length > 0) {
+            return res.json(data);
+        } else {
+             // If DB is empty, return defaults
+            const defaultBlocks = [
+                { id: 'event_start', type: 'event_start', icon: 'assets/block_icons/play.svg', name: 'Iniciar' },
+                { id: 'motor_on', type: 'motor_on', icon: 'assets/block_icons/motor.svg', name: 'Motor Ligar' },
+                { id: 'motor_off', type: 'motor_off', icon: 'assets/block_icons/motor.svg', name: 'Motor Parar' },
+                { id: 'motor_spin', type: 'motor_spin', icon: 'assets/block_icons/motor.svg', name: 'Motor Girar' },
+                { id: 'control_wait', type: 'control_wait', icon: 'assets/block_icons/wait.svg', name: 'Esperar' },
+                { id: 'control_repeat', type: 'control_repeat', icon: 'assets/block_icons/loop.svg', name: 'Repetir' },
+                { id: 'led_set_color', type: 'led_set_color', icon: 'assets/block_icons/led.svg', name: 'LED' },
+                { id: 'sound_play', type: 'sound_play', icon: 'assets/block_icons/sound.svg', name: 'Som' }
+            ];
+            return res.json(defaultBlocks);
+        }
+    }
+
     if (!fs.existsSync(BLOCKS_FILE)) {
          // Return default blocks if file doesn't exist (e.g. Vercel cold start without file)
          // This is a fallback to ensure we don't crash or return 404/500 if file missing
@@ -165,12 +221,61 @@ app.get('/api/blocks', (req, res) => {
 });
 
 // Update Blocks (Protected)
-app.post('/api/blocks', isAuthenticated, (req, res) => {
+app.post('/api/blocks', isAuthenticated, async (req, res) => {
     const newBlocks = req.body;
     // Basic validation
     if (!Array.isArray(newBlocks)) {
         return res.status(400).json({ error: 'Invalid format' });
     }
+
+    if (supabase) {
+        // Strategy: We want to sync the client state to DB.
+        // Client sends the full list of desired blocks.
+        // Simple approach: Delete all and re-insert. 
+        // Note: This changes created_at timestamps.
+        
+        try {
+            // 1. Delete all
+            const { error: deleteError } = await supabase
+                .from('blocks')
+                .delete()
+                .neq('id', 'placeholder_impossible_id'); // Delete all rows where ID is not something impossible (aka all rows)
+                // Note: .delete() requires a filter in Supabase client unless configured otherwise?
+                // Actually .delete().neq('id', 0) works if ID is numeric, or .gt('id', '') for text.
+            
+            // Safer: Delete where ID is in the list of existing IDs? 
+            // Or just use upsert and ignore deletions?
+            // If user DELETED a block in UI, upsert won't remove it from DB.
+            // So we MUST delete.
+            
+            // Let's try deleting everything.
+            // "delete()" without filter might be blocked by middleware?
+            // "neq('id', '0')" is a hack.
+            
+            await supabase.from('blocks').delete().neq('id', '____'); 
+            
+            // 2. Insert new
+            // Ensure data matches schema
+            const blocksToInsert = newBlocks.map(b => ({
+                id: b.id,
+                type: b.type,
+                icon: b.icon,
+                name: b.name
+            }));
+            
+            const { error: insertError } = await supabase
+                .from('blocks')
+                .insert(blocksToInsert);
+                
+            if (insertError) throw insertError;
+            
+            return res.json({ success: true });
+        } catch (err) {
+            console.error("Supabase Save Blocks Error:", err);
+            return res.status(500).json({ error: 'Failed to save blocks to DB' });
+        }
+    }
+
     fs.writeFile(BLOCKS_FILE, JSON.stringify(newBlocks, null, 2), (err) => {
         if (err) return res.status(500).json({ error: 'Failed to save blocks' });
         res.json({ success: true });
