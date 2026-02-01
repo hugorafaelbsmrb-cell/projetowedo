@@ -283,7 +283,7 @@ app.post('/api/blocks', isAuthenticated, async (req, res) => {
 });
 
 // Save Icon (Protected) - Renamed logic to support general icon upload
-app.post('/api/save-icon', isAuthenticated, (req, res) => {
+app.post('/api/save-icon', isAuthenticated, async (req, res) => {
     const { type, image, filename } = req.body;
     // type is now just a prefix or identifier, we use filename mostly
     if (!image || !filename) {
@@ -309,6 +309,38 @@ app.post('/api/save-icon', isAuthenticated, (req, res) => {
     // Let's overwrite if name matches, or prepend timestamp
     const uniqueFilename = `${Date.now()}_${safeFilename}`;
 
+    // Supabase Storage Strategy
+    if (supabase) {
+        try {
+            // Upload to 'block_icons' bucket
+            const { data, error } = await supabase
+                .storage
+                .from('block_icons')
+                .upload(uniqueFilename, buffer, {
+                    contentType: `image/${ext}`,
+                    upsert: false
+                });
+
+            if (error) {
+                console.error("Supabase Upload Error:", error);
+                throw error;
+            }
+
+            // Get Public URL
+            const { data: { publicUrl } } = supabase
+                .storage
+                .from('block_icons')
+                .getPublicUrl(uniqueFilename);
+
+            return res.json({ success: true, path: publicUrl });
+
+        } catch (err) {
+            console.error("Supabase Storage Exception:", err);
+            return res.status(500).json({ error: 'Failed to upload icon to cloud storage' });
+        }
+    }
+
+    // Local Filesystem Strategy (Fallback)
     const filePath = path.join(__dirname, 'assets', 'block_icons', uniqueFilename);
     const publicPath = `assets/block_icons/${uniqueFilename}`;
 
