@@ -11,12 +11,17 @@ const PORT = process.env.PORT || 3000;
 const CONFIG_FILE = path.join(__dirname, 'config.json');
 const USERS_FILE = path.join(__dirname, 'users.json');
 
+app.set('trust proxy', 1); // Required for Vercel/Heroku (HTTPS)
+
 app.use(cors());
 app.use(bodyParser.json());
 app.use(cookieSession({
     name: 'session',
     keys: ['wedo-secret-key-123'], // Change this in production!
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    secure: process.env.NODE_ENV === 'production', // Secure in production
+    sameSite: 'lax',
+    httpOnly: true
 }));
 
 // Initialize users file if not exists
