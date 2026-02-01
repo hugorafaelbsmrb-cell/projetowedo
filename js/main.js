@@ -488,6 +488,13 @@ async function saveBlocks(blocks) {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(blocks)
         });
+        
+        if (response.status === 401) {
+            alert('Sessão expirada. Por favor, faça login novamente para salvar.');
+            window.location.href = '/login.html';
+            return;
+        }
+
         if(response.ok) {
             alert('Configuração salva! A página será recarregada.');
             window.location.reload();
@@ -584,6 +591,12 @@ function showAddBlockForm(currentBlocks) {
                     })
                 });
                 
+                if (uploadRes.status === 401) {
+                    alert('Sessão expirada. Por favor, faça login novamente.');
+                    window.location.href = '/login.html';
+                    return;
+                }
+
                 if(!uploadRes.ok) throw new Error('Erro no upload');
                 const uploadData = await uploadRes.json();
                 
