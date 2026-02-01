@@ -284,31 +284,46 @@ app.post('/api/save-icon', isAuthenticated, async (req, res) => {
 
             if (error) {
                 console.error("Supabase Upload Error:", error);
-                throw error;
+                // Don't throw, just fall through to fallback (or base64 return)
+            } else {
+                // Get Public URL
+                const { data: { publicUrl } } = supabase
+                    .storage
+                    .from('block_icons')
+                    .getPublicUrl(uniqueFilename);
+
+                return res.json({ success: true, path: publicUrl });
             }
-
-            // Get Public URL
-            const { data: { publicUrl } } = supabase
-                .storage
-                .from('block_icons')
-                .getPublicUrl(uniqueFilename);
-
-            return res.json({ success: true, path: publicUrl });
 
         } catch (err) {
             console.error("Supabase Storage Exception:", err);
-            return res.status(500).json({ error: 'Failed to upload icon to cloud storage' });
+            // Fall through to fallback
         }
     }
 
     // Local Filesystem Strategy (Fallback)
-    const filePath = path.join(__dirname, 'assets', 'block_icons', uniqueFilename);
+    const assetsDir = path.join(__dirname, 'assets', 'block_icons');
+    const filePath = path.join(assetsDir, uniqueFilename);
     const publicPath = `assets/block_icons/${uniqueFilename}`;
+
+    // Ensure directory exists
+    if (!fs.existsSync(assetsDir)) {
+        try {
+            fs.mkdirSync(assetsDir, { recursive: true });
+        } catch (e) {
+            // If we can't create directory (Read-only), return Base64
+            console.warn("Read-only environment detected (cannot mkdir). Returning Base64.");
+            return res.json({ success: true, path: image }); // Return original Base64
+        }
+    }
 
     fs.writeFile(filePath, buffer, (err) => {
         if (err) {
-            console.error(err);
-            return res.status(500).json({ error: 'Failed to save file' });
+            console.warn("Write file failed (likely Read-only). Returning Base64 fallback.");
+            // Fallback: Return the Base64 image itself as the 'path'
+            // The client will store this large string in the block definition
+            // which will be saved to LocalStorage.
+            return res.json({ success: true, path: image });
         }
         
         res.json({ success: true, path: publicPath });
