@@ -1,5 +1,6 @@
 import { setupBlockly } from './blockly_setup.js';
 import { defineGenerators } from './blocks/generators.js';
+import { BLOCK_TEMPLATES } from './blocks/templates.js';
 import { ArduinoDriver } from './drivers/arduino_driver.js';
 import { WeDoDriver } from './drivers/wedo_driver.js';
 import { AudioManager } from './audio_manager.js';
@@ -432,17 +433,10 @@ async function loadBlockSettings() {
 }
 
 function getLabelForType(type) {
-    const labels = {
-        'event_start': 'Iniciar (Play)',
-        'motor_on': 'Motor Ligar',
-        'motor_spin': 'Motor Girar (CW/CCW)',
-        'motor_off': 'Motor Parar',
-        'control_wait': 'Esperar',
-        'control_repeat': 'Repetir (Loop)',
-        'led_set_color': 'LED',
-        'sound_play': 'Som'
-    };
-    return labels[type] || type;
+    if (BLOCK_TEMPLATES[type]) {
+        return BLOCK_TEMPLATES[type].label;
+    }
+    return type;
 }
 
 async function deleteBlock(index, blocks) {
@@ -473,6 +467,12 @@ async function saveBlocks(blocks) {
 
 function showAddBlockForm(currentBlocks) {
     const container = document.getElementById('settings-icons-container');
+    
+    // Generate dynamic options from templates
+    const options = Object.entries(BLOCK_TEMPLATES).map(([type, template]) => {
+        return `<option value="${type}">${template.label}</option>`;
+    }).join('');
+
     container.innerHTML = `
         <h3 style="margin-top: 0;">Novo Bloco</h3>
         <div class="form-group">
@@ -482,14 +482,7 @@ function showAddBlockForm(currentBlocks) {
         <div class="form-group">
             <label>Função (Comportamento)</label>
             <select id="new-block-type">
-                <option value="event_start">Iniciar (Play)</option>
-                <option value="motor_on">Ligar Motor</option>
-                <option value="motor_spin">Girar Motor (CW/CCW)</option>
-                <option value="motor_off">Parar Motor</option>
-                <option value="control_wait">Esperar</option>
-                <option value="control_repeat">Repetir (Loop)</option>
-                <option value="led_set_color">LED</option>
-                <option value="sound_play">Som</option>
+                ${options}
             </select>
         </div>
         <div class="form-group">
