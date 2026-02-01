@@ -3,7 +3,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-const session = require('express-session');
+const cookieSession = require('cookie-session');
 const supabase = require('./db');
 
 const app = express();
@@ -13,11 +13,10 @@ const USERS_FILE = path.join(__dirname, 'users.json');
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use(session({
-    secret: 'wedo-secret-key-123',
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false } // Set to true if using HTTPS
+app.use(cookieSession({
+    name: 'session',
+    keys: ['wedo-secret-key-123'], // Change this in production!
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
 }));
 
 // Initialize users file if not exists
@@ -111,7 +110,7 @@ app.post('/api/login', async (req, res) => {
 
 // Logout
 app.post('/api/logout', (req, res) => {
-    req.session.destroy();
+    req.session = null;
     res.json({ success: true });
 });
 
