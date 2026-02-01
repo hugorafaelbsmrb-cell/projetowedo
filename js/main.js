@@ -385,9 +385,48 @@ async function loadBlockSettings() {
 
     try {
         const response = await fetch('/api/blocks');
-        if (!response.ok) throw new Error('Failed to load');
+        if (!response.ok) {
+            console.warn(`Failed to fetch blocks from API (${response.status}), trying localStorage...`);
+            throw new Error('Failed to fetch blocks from API');
+        }
         const blocks = await response.json();
         
+        const container = document.getElementById('settings-icons-container');
+        
+        // Fallback to defaults if no blocks found
+        const blocksToRender = (blocks && blocks.length > 0) ? blocks : [
+            { id: 'event_start', type: 'event_start', icon: 'assets/block_icons/play.svg', name: 'Iniciar' },
+            { id: 'motor_on', type: 'motor_on', icon: 'assets/block_icons/motor.svg', name: 'Motor Ligar' },
+            { id: 'motor_off', type: 'motor_off', icon: 'assets/block_icons/motor.svg', name: 'Motor Parar' }
+        ];
+
+        renderBlocksList(blocksToRender, container);
+    } catch (error) {
+        console.error('Error loading blocks:', error);
+        // Fallback to localStorage or defaults
+        const savedBlocks = localStorage.getItem('wedo_blocks');
+        const container = document.getElementById('settings-icons-container');
+        
+        let blocksToRender = [];
+        if (savedBlocks) {
+            try {
+                blocksToRender = JSON.parse(savedBlocks);
+            } catch(e) { console.error("Error parsing local blocks", e); }
+        }
+        
+        if (blocksToRender.length === 0) {
+             blocksToRender = [
+                { id: 'event_start', type: 'event_start', icon: 'assets/block_icons/play.svg', name: 'Iniciar' },
+                { id: 'motor_on', type: 'motor_on', icon: 'assets/block_icons/motor.svg', name: 'Motor Ligar' },
+                { id: 'motor_off', type: 'motor_off', icon: 'assets/block_icons/motor.svg', name: 'Motor Parar' }
+            ];
+        }
+        
+        renderBlocksList(blocksToRender, container);
+        document.getElementById('blocks-error-msg')?.remove(); // Remove error message if we recovered
+    }
+
+    function renderBlocksList(blocks, container) {
         container.innerHTML = `
             <div style="margin-bottom: 15px;">
                 <button id="btn-add-block" class="btn btn-green" style="width: 100%; padding: 10px; border-radius: 8px;">+ Adicionar Novo Bloco</button>
@@ -425,10 +464,6 @@ async function loadBlockSettings() {
             div.querySelector('.btn-red').addEventListener('click', () => deleteBlock(index, blocks));
             list.appendChild(div);
         });
-
-    } catch (e) {
-        console.error(e);
-        container.innerHTML = '<p style="color: red;">Erro ao carregar configurações de blocos.</p>';
     }
 }
 

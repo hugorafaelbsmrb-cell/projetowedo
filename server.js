@@ -22,7 +22,7 @@ app.use(session({
 // Initialize users file if not exists
 if (!fs.existsSync(USERS_FILE)) {
     const defaultUsers = [{ username: 'admin', password: '123' }]; // Default user
-    fs.writeFileSync(USERS_FILE, JSON.stringify(defaultUsers, null, 2));
+    safeWriteFile(USERS_FILE, JSON.stringify(defaultUsers, null, 2));
 }
 
 // Middleware to check authentication
@@ -36,6 +36,15 @@ function isAuthenticated(req, res, next) {
 
 const BLOCKS_FILE = path.join(__dirname, 'blocks.json');
 
+// Helper to safely write files (skips if read-only filesystem)
+function safeWriteFile(filePath, data) {
+    try {
+        fs.writeFileSync(filePath, data);
+    } catch (err) {
+        console.warn(`Warning: Could not write to ${filePath}. Environment might be read-only.`);
+    }
+}
+
 // Initialize blocks file if not exists
 if (!fs.existsSync(BLOCKS_FILE)) {
     const defaultBlocks = [
@@ -48,7 +57,7 @@ if (!fs.existsSync(BLOCKS_FILE)) {
         { id: 'led_set_color', type: 'led_set_color', icon: 'assets/block_icons/led.svg', name: 'LED' },
         { id: 'sound_play', type: 'sound_play', icon: 'assets/block_icons/sound.svg', name: 'Som' }
     ];
-    fs.writeFileSync(BLOCKS_FILE, JSON.stringify(defaultBlocks, null, 2));
+    safeWriteFile(BLOCKS_FILE, JSON.stringify(defaultBlocks, null, 2));
 }
 
 app.use(express.static(__dirname));
@@ -112,7 +121,12 @@ app.post('/api/config', isAuthenticated, (req, res) => {
 
     fs.writeFile(CONFIG_FILE, JSON.stringify(newConfig, null, 2), (err) => {
         if (err) {
-            return res.status(500).json({ error: 'Failed to save config' });
+            console.error('Save config error:', err);
+            // Don't fail the request if just file write failed in read-only env,
+            // but for now, we return error to let client handle it or fallback.
+            // Or better: return success but warn? 
+            // Vercel won't persist anyway.
+            return res.status(500).json({ error: 'Failed to save config (Read-only environment?)' });
         }
         res.json({ success: true, config: newConfig });
     });
@@ -120,11 +134,33 @@ app.post('/api/config', isAuthenticated, (req, res) => {
 
 // Get Blocks (Public)
 app.get('/api/blocks', (req, res) => {
+    if (!fs.existsSync(BLOCKS_FILE)) {
+         // Return default blocks if file doesn't exist (e.g. Vercel cold start without file)
+         // This is a fallback to ensure we don't crash or return 404/500 if file missing
+        const defaultBlocks = [
+            { id: 'event_start', type: 'event_start', icon: 'assets/block_icons/play.svg', name: 'Iniciar' },
+            { id: 'motor_on', type: 'motor_on', icon: 'assets/block_icons/motor.svg', name: 'Motor Ligar' },
+            { id: 'motor_off', type: 'motor_off', icon: 'assets/block_icons/motor.svg', name: 'Motor Parar' },
+            { id: 'motor_spin', type: 'motor_spin', icon: 'assets/block_icons/motor.svg', name: 'Motor Girar' },
+            { id: 'control_wait', type: 'control_wait', icon: 'assets/block_icons/wait.svg', name: 'Esperar' },
+            { id: 'control_repeat', type: 'control_repeat', icon: 'assets/block_icons/loop.svg', name: 'Repetir' },
+            { id: 'led_set_color', type: 'led_set_color', icon: 'assets/block_icons/led.svg', name: 'LED' },
+            { id: 'sound_play', type: 'sound_play', icon: 'assets/block_icons/sound.svg', name: 'Som' }
+        ];
+        return res.json(defaultBlocks);
+    }
+
     fs.readFile(BLOCKS_FILE, 'utf8', (err, data) => {
         if (err) {
+            console.error("Error reading blocks.json:", err);
             return res.status(500).json({ error: 'Failed to read blocks' });
         }
-        res.json(JSON.parse(data));
+        try {
+            res.json(JSON.parse(data));
+        } catch (parseErr) {
+            console.error("Error parsing blocks.json:", parseErr);
+            res.status(500).json({ error: 'Invalid blocks JSON' });
+        }
     });
 });
 
