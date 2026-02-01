@@ -67,16 +67,20 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('settings-logo-type').addEventListener('change', toggleLogoInput);
     document.getElementById('btn-copy-embed').addEventListener('click', copyEmbedCode);
     
-    // Logout Listener
-    document.getElementById('btn-logout').addEventListener('click', handleLogout);
+    // Logout Listener (Removed UI, but keep listener to avoid error if element exists)
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.style.display = 'none'; // Hide Logout Button
+        btnLogout.addEventListener('click', handleLogout);
+    }
 
     // Initial Driver Setup
     handleHardwareChange();
     
     // Check Auth & Load Config
-    checkAuth().then(() => {
-        loadConfig();
-    });
+    // Auto-login logic (Bypass check)
+    localStorage.setItem('auth_user', JSON.stringify({ username: 'admin' }));
+    loadConfig();
 
     // Check if running in Iframe
     if (window.self !== window.top) {
@@ -98,43 +102,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function checkAuth() {
-    // 1. Check LocalStorage (Static/Vercel Mode)
-    const localAuth = localStorage.getItem('auth_user');
-    if (localAuth) {
-        return true; // Authenticated
-    }
-
-    // 2. Check Backend Session (Legacy/Local Mode)
-    try {
-        const response = await fetch('/api/check-auth');
-        if (response.ok) {
-            const data = await response.json();
-            if (data.authenticated) {
-                localStorage.setItem('auth_user', JSON.stringify(data.user));
-                return true;
-            }
-        }
-    } catch (e) {
-        console.warn('Backend auth check failed (offline/static mode)');
-    }
-
-    // If both failed, redirect
-    window.location.href = '/login.html';
-    return false;
+    return true; // Always authenticated
 }
 
 async function handleLogout() {
-    // Clear LocalStorage
-    localStorage.removeItem('auth_user');
-    
-    // Try Backend Logout
-    try {
-        await fetch('/api/logout', { method: 'POST' });
-    } catch (e) {
-        console.log('Backend logout failed or ignored');
-    }
-    
-    window.location.href = '/login.html';
+    // No-op or redirect to home
+    window.location.href = '/';
 }
 
 function handleHardwareChange() {
@@ -489,11 +462,7 @@ async function saveBlocks(blocks) {
             body: JSON.stringify(blocks)
         });
         
-        if (response.status === 401) {
-            alert('Sessão expirada. Por favor, faça login novamente para salvar.');
-            window.location.href = '/login.html';
-            return;
-        }
+        // Auth check removed
 
         if(response.ok) {
             alert('Configuração salva! A página será recarregada.');
@@ -591,12 +560,8 @@ function showAddBlockForm(currentBlocks) {
                     })
                 });
                 
-                if (uploadRes.status === 401) {
-                    alert('Sessão expirada. Por favor, faça login novamente.');
-                    window.location.href = '/login.html';
-                    return;
-                }
-
+                // Auth check removed
+                
                 if(!uploadRes.ok) throw new Error('Erro no upload');
                 const uploadData = await uploadRes.json();
                 

@@ -30,13 +30,9 @@ if (!fs.existsSync(USERS_FILE)) {
     safeWriteFile(USERS_FILE, JSON.stringify(defaultUsers, null, 2));
 }
 
-// Middleware to check authentication
+// Middleware to check authentication (DISABLED - Open Access)
 function isAuthenticated(req, res, next) {
-    if (req.session.user) {
-        next();
-    } else {
-        res.status(401).json({ error: 'Unauthorized' });
-    }
+    next(); // Always allow access
 }
 
 const BLOCKS_FILE = path.join(__dirname, 'blocks.json');
@@ -71,61 +67,22 @@ app.use(express.static(__dirname));
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
-// Login
-app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
-    
-    // Supabase Auth Strategy
-    if (supabase) {
-        try {
-            const { data, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('username', username)
-                .eq('password', password)
-                .single();
-            
-            if (error || !data) {
-                return res.status(401).json({ error: 'Credenciais inválidas' });
-            }
-
-            req.session.user = { username: data.username };
-            return res.json({ success: true, user: req.session.user });
-        } catch (err) {
-            console.error("Supabase Login Error:", err);
-            return res.status(500).json({ error: 'Server error' });
-        }
-    }
-
-    // Local File Auth Strategy (Fallback)
-    fs.readFile(USERS_FILE, 'utf8', (err, data) => {
-        if (err) return res.status(500).json({ error: 'Server error' });
-        
-        const users = JSON.parse(data);
-        const user = users.find(u => u.username === username && u.password === password);
-        
-        if (user) {
-            req.session.user = { username: user.username };
-            res.json({ success: true, user: req.session.user });
-        } else {
-            res.status(401).json({ error: 'Credenciais inválidas' });
-        }
-    });
+// Login (Deprecated - Auto Success)
+app.post('/api/login', (req, res) => {
+    // Fake login success
+    req.session.user = { username: 'admin' };
+    res.json({ success: true, user: { username: 'admin' } });
 });
 
-// Logout
+// Logout (Deprecated)
 app.post('/api/logout', (req, res) => {
     req.session = null;
     res.json({ success: true });
 });
 
-// Check Auth
+// Check Auth (Always True)
 app.get('/api/check-auth', (req, res) => {
-    if (req.session.user) {
-        res.json({ authenticated: true, user: req.session.user });
-    } else {
-        res.json({ authenticated: false });
-    }
+    res.json({ authenticated: true, user: { username: 'admin' } });
 });
 
 // Get Config (Public)
