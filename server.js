@@ -4,6 +4,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const cookieSession = require('cookie-session');
+require('dotenv').config(); // Load environment variables locally
 const supabase = require('./db');
 
 const app = express();
